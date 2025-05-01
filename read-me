@@ -1,4 +1,4 @@
-TankBattle is a simple 2D tank shooter game built with Python and Pygame.
+TankBattle is a 2D tank shooter game built with Pygame.
 
 Control your tank, avoid enemy fire, and destroy enemy tanks to survive as long as possible!
 
@@ -7,8 +7,3 @@ How to Play:
 - Move your tank using the arrow keys.
 - Press spacebar to shoot common bullets or F to shoot special bullets.
 - Avoid enemy bullets and eliminate enemy tank to win.
-
-Requirements:
-
-- Python 3.x
-- Pygame library
