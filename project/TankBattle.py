@@ -2,6 +2,7 @@ import pygame
 import math
 import random
 from pygame import mixer
+import heapq # voor de grid
 
 # TO DO:
 #bot movement: a-star op bepaalde momenten 
@@ -15,22 +16,16 @@ clock = pygame.time.Clock()
 current_time = pygame.time.get_ticks()        
 last_print_time = 0
 
-class GameImage:
-    def __init__(self, name, size):
-        self.name = name
-        self.size = size 
-        self.image = self.load_scaled_image()
-        
-    def load_scaled_image(self):
-        unsized_image = pygame.image.load(self.name)
-        return pygame.transform.scale(unsized_image , self.size)
+screen_length = 1100
+screen_height = 650
+player_size = [40,40]
+bot_size = [40,40]
+grid_size = 35
 
-#background
-screen_size = [1100, 650]
-screen_length = screen_size[0] #makkelijker om screen height en lenght verder te gebruiken
-screen_height = screen_size[1]
+# background
 screen = pygame.display.set_mode((screen_length,screen_height))
-background = GameImage("plains.jpg", screen_size).image
+unsized_background = pygame.image.load("plains.jpg")
+background = pygame.transform.scale(unsized_background,(screen_length,screen_height))
 pygame.display.set_caption("Tank Battle")
 icon = pygame.image.load("tank_icon.png")
 pygame.display.set_icon(icon)
@@ -40,14 +35,13 @@ mixer.music.set_volume(0.5)
 hit_sound = mixer.Sound("hit_sound.ogg")
 hit_sound.set_volume(1.0)
                     
-#grid
-grid_size = 35
+# grid
 grid_length = screen_length // grid_size
 grid_height = screen_height // grid_size
 
 #player
-player_size = [40,40]
-player_image = GameImage("new_tank_image.png", player_size).image
+unsized_player = pygame.image.load("new_tank_image.png")
+player_image = pygame.transform.scale(unsized_player,(player_size[0],player_size[1]))
 player_pos = pygame.math.Vector2(100, screen_height / 2)
 direction = pygame.math.Vector2(1,1)
 player_speed = 10
@@ -55,9 +49,10 @@ rotation_speed = 15
 angle = 0
 player_health = 5
 
-#bot 
-bot_size = [40,40]
-bot_image = GameImage("enemytank_image.png", bot_size).image
+
+# bot 
+unsized_bot = pygame.image.load("enemytank_image.png")
+bot_image = pygame.transform.scale(unsized_bot,(bot_size[0],bot_size[1]))
 bot_pos = pygame.math.Vector2(screen_length -100 , screen_height/2)
 bot_speed = 3
 bot_angle = 0
@@ -70,38 +65,44 @@ bullet_size = [10,25]
 bullet_speed = 20
 bullet_list_player = []
 bullet_list_bot = []
-bullet_image = GameImage("bullet_image1.png", bullet_size).image
+unsized_bullet = pygame.image.load("bullet_image1.png")
+bullet_image = pygame.transform.scale(unsized_bullet, (bullet_size[0],bullet_size[1]))
 bullet_cooldown = 2000
 ammo_pos = [10,70]
 max_ammo = 3
 
 #special bullet
-special_bullet_image = GameImage("bullet_special.png", bullet_size).image
+unsized_special_bullet = pygame.image.load("bullet_special.png")
+special_bullet_image = pygame.transform.scale(unsized_special_bullet, (bullet_size[0], bullet_size[1]))
 
 #wall
 wall_size = [35,35]
-wall_image = GameImage("brick_wall.png", wall_size).image
+unsized_wall = pygame.image.load("brick_wall.png")      
+wall_image = pygame.transform.scale(unsized_wall, (wall_size[0],wall_size[1]))
 wall_amount = 15
 
 #bush
 bush_size = [35,35]
-bush_image = GameImage("bush.png", bush_size).image
+unsized_bush = pygame.image.load("bush.png")
+bush_image = pygame.transform.scale(unsized_bush, (bush_size[0],bush_size[1]))
 bush_amount = 15
 
 #heart
 playerheart_size = [50,50]
 botheart_size = [15,15]
-playerheart_image = GameImage("heart.png", playerheart_size).image
-botheart_image = GameImage("heart.png", botheart_size).image
+unsized_heart = pygame.image.load("heart.png")
+playerheart_image = pygame.transform.scale(unsized_heart,(playerheart_size[0],playerheart_size[1]))
+botheart_image = pygame.transform.scale(unsized_heart,(botheart_size[0],botheart_size[1]))
 heart_pos = [10,10]
 
 #shield
 playershield_size = [50,50]
 botshield_size = [15,15]
 shield_size =  [35,35]
-playershield_image = GameImage("shield.png", playershield_size).image
-botshield_image = GameImage("shield.png", botshield_size).image
-shield_image = GameImage("shield.png", shield_size).image 
+unsized_shield = pygame.image.load("shield.png")
+playershield_image = pygame.transform.scale(unsized_shield,(playershield_size[0],playershield_size[1]))
+botshield_image = pygame.transform.scale(unsized_shield,(botshield_size[0],botshield_size[1]))
+shield_image = pygame.transform.scale(unsized_shield,(shield_size[0],shield_size[1]))
 next_shield_time = pygame.time.get_ticks() + random.randint(10000, 30000)
 shield = None #er kan tegelijk maar 1 shield in de game zijn, in het begin geen shield
 
@@ -167,7 +168,7 @@ class MovingObject(Object):
             )
 
         return true_rect
-    
+
 class Player(MovingObject):
     def __init__(self,pos,direction,player_speed,rotation_speed,angle,playerImg):
         super().__init__(pos)
@@ -252,38 +253,77 @@ class Bot(MovingObject):
         self.last_shot_time = 0
         self.state = "follow"
         self.state_starttime = pygame.time.get_ticks()
-        self.state_duration = random.randint(1000, 2000)
+        self.state_duration = random.randint(2000, 4000)
         self.last_moved_time = pygame.time.get_ticks()
         self.direction = pygame.math.Vector2(player.pos.x - self.pos.x, player.pos.y - self.pos.y).normalize()
+        self.last_position = self.pos.copy()
+        self.last_path_update_time = pygame.time.get_ticks()
         self.health = 5
         self.has_shield = False
-
+        self.path = []
+        
     def update_state(self):
         current_time = pygame.time.get_ticks()
-        
-        # defines when in which state
-        if current_time - self.state_starttime > self.state_duration:             
-            if self.pos.distance_to(player.pos) < 400:
+
+        # Detect if stuck
+        movement_threshold = 1.5
+        time_since_last_check = current_time - self.last_moved_time
+
+        if time_since_last_check > 500:
+            if self.pos.distance_to(self.last_position) < movement_threshold:
                 self.state = "follow"
-                        
-            elif random.randint(1,2) == 1:
-                self.state = "random" 
-                 
+                self.path = []  # force new path
             else:
-                self.state = "follow"
+                self.last_position = self.pos.copy()
+            self.last_moved_time = current_time
+
+        # Time-based state switch
+        if current_time - self.state_starttime > self.state_duration:
+            self.state = random.choice(["random", "follow"])
+            self.state_duration = random.randint(2000, 4000)
             self.state_starttime = current_time
-        
-        # movement          
+
             if self.state == "random":
-                self.state_duration = random.randint(1000,2500) # tussen 1 en 2,5 seconden
-                self.angle = random.randint(0,360)
-                self.direction = pygame.math.Vector2(math.cos(math.radians(self.angle+90)),-math.sin(math.radians(self.angle+90)))
-            self.last_moved_time = pygame.time.get_ticks()
+                self.angle = random.randint(0, 360)
+                self.direction = pygame.math.Vector2(
+                    math.cos(math.radians(self.angle + 90)),
+                    -math.sin(math.radians(self.angle + 90))
+                )
+
+        # === FOLLOW STATE ===
         if self.state == "follow":
-            self.state_duration = random.randint(1000,2500) # tussen 1 en 2,5 seconden
-            self.direction = pygame.math.Vector2(player.pos.x - self.pos.x, player.pos.y - self.pos.y).normalize()
-            self.angle = -math.degrees(math.atan2(self.direction.y,self.direction.x)) - 90
-      
+            if current_time - self.last_path_update_time > 300 or not self.path:
+                grid = Grid.build_grid()
+                start = Grid.screen_to_grid(self.pos)
+                goal = Grid.screen_to_grid(player.pos)
+                new_path = Grid.astar(start, goal, grid)
+
+                if new_path:
+                    self.path = new_path
+                else:
+                    self.state = "random"
+                    self.state_starttime = current_time
+                    self.state_duration = random.randint(2000, 4000)
+                    self.angle = random.randint(0, 360)
+                    self.direction = pygame.math.Vector2(
+                        math.cos(math.radians(self.angle + 90)),
+                        -math.sin(math.radians(self.angle + 90))
+                    )
+                    return
+
+                self.last_path_update_time = current_time
+
+            if self.path:
+                next_step = Grid.grid_to_screen(self.path[0])
+                if self.pos.distance_to(next_step) < 5:
+                    self.path.pop(0)
+                if self.path:
+                    next_step = Grid.grid_to_screen(self.path[0])
+                    self.direction = (next_step - self.pos).normalize()
+                    self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
+
+
+
     def bot_movement(self,lengte,hoogte):
         self.pos += self.speed * self.direction
         # om niet te laggen
@@ -347,9 +387,6 @@ class StationaryObject(Object):
         self.grid_x = int(self.pos[0]) // grid_size
         self.grid_y = int(self.pos[1]) // grid_size
 
-    def draw(self):
-        screen.blit(self.image, self.rect.topleft)
-
 class Shield(StationaryObject):
     def __init__(self, pos, image):
         super().__init__(pos)
@@ -357,7 +394,7 @@ class Shield(StationaryObject):
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
 
     def draw(self):
-        return super().draw()
+        screen.blit(self.image, self.rect.topleft)
 
 class Wall(StationaryObject):
     def __init__(self,pos, wallIMG):
@@ -366,7 +403,7 @@ class Wall(StationaryObject):
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
 
     def draw(self):
-       return super().draw()
+        screen.blit(self.image, self.rect.topleft)
 
 class Bush(StationaryObject):
     def __init__(self,pos, bushIMG):
@@ -375,7 +412,11 @@ class Bush(StationaryObject):
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
     
     def draw(self):
-        return super().draw()
+        screen.blit(self.image, self.rect.topleft)
+
+class Figure(Object):
+    def __init__(self,pos):
+        super().__init__(pos)
 
 class Screen():
     def __init__(self,pos):
@@ -453,6 +494,8 @@ class Screen():
     
         subtext = small_font.render("Press BACKSPACE to return to title screen or ENTER to start", True, (255, 255, 255))
         screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height - 100))
+
+class Grid:
     
     def line_grids(start_pos, end_pos, grid_size):
         grids = []
@@ -487,6 +530,124 @@ class Screen():
             print(list_of_obstacles)
             last_print_time = current_time
         return
+
+    def screen_to_grid(pos):
+        return (int(pos.x) // grid_size, int(pos.y) // grid_size)
+
+    def grid_to_screen(grid_pos):
+        return pygame.math.Vector2((grid_pos[0] + 0.5) * grid_size, (grid_pos[1] + 0.5) * grid_size)
+
+    def build_grid(): # maak een de map een grid van nullen en 1 , 0 als vrij en 1 als er een obstacle is
+        grid = []
+        for i in range(grid_length): # maakt een lijst van nullen 
+            row = [0] * grid_height
+            grid.append(row)
+
+        for obj in list_of_objects: # vervangt de 0 door een 1 als er een obstacle is
+            if isinstance(obj, (Wall, Bush)):
+                grid[obj.grid_x][obj.grid_y] = 1
+
+        return grid
+    
+    def heuristic(a, b): # geeft een waarde (f_score) voor de afstand tot het doel -> van chatgpt
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    def is_area_clear(grid, x, y, clearance):  # om een vrije 3x3 gebied te vinden zodat de bot zeker door kan gaan (zou kunnen botsen tegen zijkant als 1x1) -> aangepaste versie van chatgpt
+        grid_width = len(grid)
+        grid_height = len(grid[0])
+        
+        # gaat loopen over elke grid in nabijheid bot (3x3) als die vrij is of niet, clearance zal =1 zijn bij oproepen van functie
+        for dx in range(-clearance, clearance + 1):
+            for dy in range(-clearance, clearance + 1):
+                check_x = x + dx
+                check_y = y + dy
+
+                # overslaan als de cel buiten de grid is
+                if check_x < 0 or check_x >= grid_width:
+                    return False
+                if check_y < 0 or check_y >= grid_height:
+                    return False
+
+                # checken als obstacle op de grid
+                if grid[check_x][check_y] == 1:
+                    return False
+
+        # alle andere grids zijn dan vrij -> True
+        return True
+
+    def astar(start_cell, goal_cell, grid):
+        from heapq import heappush, heappop
+
+        # priority queue van estimated_total_cost, cel
+        open_cells = []
+        heappush(open_cells, (0, start_cell))
+
+        # om het beste path bij te houden
+        came_from = {}
+
+        # om de "kost" van het pad bij te houden
+        cost_from_start = {start_cell: 0}
+
+        # loopen over alle open cellen
+        while open_cells:
+            # beginnen met de cell met de kleinste estimated_total_cost
+            current_priority, current_cell = heappop(open_cells)
+
+            # doel bereikt -> maak het pad in backtracking
+            if current_cell == goal_cell:
+                path = []
+                while current_cell in came_from:
+                    path.append(current_cell)
+                    current_cell = came_from[current_cell]
+                path.reverse()
+                return path
+
+            # definieer alle mogelijke richtingen : up, down, left, right
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+            for direction_x, direction_y in directions:
+                neighbor_x = current_cell[0] + direction_x
+                neighbor_y = current_cell[1] + direction_y
+                neighbor_cell = (neighbor_x, neighbor_y)
+
+                # skip als de cel ernaast buiten het veld is
+                if neighbor_x < 0 or neighbor_x >= grid_length:
+                    continue
+                if neighbor_y < 0 or neighbor_y >= grid_height:
+                    continue
+
+                # skip als de cel ernaast niet "walkable" is
+                is_walkable = Grid.is_area_clear(grid, neighbor_x, neighbor_y, clearance=1)
+                if not is_walkable:
+                    continue
+
+                # temporary cost van start tot neighbor
+                temporary_cost = cost_from_start[current_cell] + 1
+
+                # als deze pad beter is dan de vorige
+                if neighbor_cell not in cost_from_start or temporary_cost < cost_from_start[neighbor_cell]:
+                    came_from[neighbor_cell] = current_cell
+                    cost_from_start[neighbor_cell] = temporary_cost
+
+                    # estimate total cost door heuristic
+                    estimated_remaining_cost = Grid.heuristic(neighbor_cell, goal_cell)
+                    estimated_total_cost = temporary_cost + estimated_remaining_cost
+
+                    # neighbor toevoegen aan de queue
+                    heappush(open_cells, (estimated_total_cost, neighbor_cell))
+
+        # If we exhaust all options without reaching the goal, return None
+        return None
+
+class Rectangle(Figure):
+    def __init__(self, pos, color, width, height):
+        super().__init__(pos)
+        self.color = color
+        self.width = width
+        self.height = height
+        
+    def draw(self):
+        pygame.draw.rect(screen, self.color, (self.pos[0], self.pos[1], self.width, self.height))
 
 class GenerateObject:
     def __init__(self, amount, object, image):
@@ -624,6 +785,7 @@ while running:
         if shield:
             shield.draw() 
             
+                        
         # levens en ammo tekenen
         Screen.player_hearts(heart_pos,player.health,playerheart_image)
         Screen.bot_hearts(previous_bot_pos,bot.health,botheart_image)
@@ -635,10 +797,10 @@ while running:
         bot_rect = MovingObject.blit_rotated_image(screen, bot.image, bot.pos, bot.angle, bot_size)
 
         #rect tekenen om collision te begrijpen
-        #pygame.draw.rect(screen, (255, 0, 0), player_rect, 2)
-        #pygame.draw.rect(screen, (0, 0, 255), bot_rect, 2)
-        #pygame.draw.line(screen,(255,0,0),bot.pos,player.pos)
-        #grids = Screen.line_grids(player.pos, bot.pos, grid_size)
+        pygame.draw.rect(screen, (255, 0, 0), player_rect, 2)
+        pygame.draw.rect(screen, (0, 0, 255), bot_rect, 2)
+        # pygame.draw.line(screen,(255,0,0),bot.pos,player.pos)
+        # grids = Grid.line_grids(player.pos, bot.pos, grid_size)
         
 
         if player.health <= 0:
