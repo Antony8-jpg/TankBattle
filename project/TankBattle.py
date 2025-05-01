@@ -1,0 +1,629 @@
+import pygame
+import math
+import random
+from pygame import mixer
+
+# TO DO:
+#bot movement: a-star op bepaalde momenten 
+#power ups
+#verschillende soorten kogels en interacties met de walls of bushes
+#meerdere bots met verschillende eigenschappen 
+
+
+pygame.init()
+clock = pygame.time.Clock()
+current_time = pygame.time.get_ticks()        
+last_print_time = 0
+
+screen_length = 1100
+screen_height = 650
+player_size = [40,40]
+bot_size = [40,40]
+grid_size = 35
+
+# background
+screen = pygame.display.set_mode((screen_length,screen_height))
+unsized_background = pygame.image.load("plains.jpg")
+background = pygame.transform.scale(unsized_background,(screen_length,screen_height))
+pygame.display.set_caption("Tank Battle")
+icon = pygame.image.load("tank_icon.png")
+pygame.display.set_icon(icon)
+mixer.music.load("background.wav")
+mixer.music.play(-1)
+mixer.music.set_volume(0.5)
+hit_sound = mixer.Sound("hit_sound.ogg")
+hit_sound.set_volume(1.0)
+                    
+# grid
+grid_length = screen_length // grid_size
+grid_height = screen_height // grid_size
+
+#player
+unsized_player = pygame.image.load("new_tank_image.png")
+player_image = pygame.transform.scale(unsized_player,(player_size[0],player_size[1]))
+player_pos = pygame.math.Vector2(100, screen_height / 2)
+direction = pygame.math.Vector2(1,1)
+player_speed = 10
+rotation_speed = 15
+angle = 0
+player_health = 5
+
+
+# bot 
+unsized_bot = pygame.image.load("enemytank_image.png")
+bot_image = pygame.transform.scale(unsized_bot,(bot_size[0],bot_size[1]))
+bot_pos = pygame.math.Vector2(screen_length -100 , screen_height/2)
+bot_speed = 3
+bot_angle = 0
+bot_rotation_speed = rotation_speed
+bot_shooting_speed = 2000
+bot_health = 5
+
+#bullet
+bullet_size = [10,25]
+bullet_speed = 20
+bullet_list_player = []
+bullet_list_bot = []
+unsized_bullet = pygame.image.load("bullet_image1.png")
+bullet_image = pygame.transform.scale(unsized_bullet, (bullet_size[0],bullet_size[1]))
+bullet_cooldown = 2000
+ammo_pos = [10,70]
+max_ammo = 3
+
+#special bullet
+unsized_special_bullet = pygame.image.load("bullet_special.png")
+special_bullet_image = pygame.transform.scale(unsized_special_bullet, (bullet_size[0], bullet_size[1]))
+
+#wall
+wall_size = [35,35]
+unsized_wall = pygame.image.load("brick_wall.png")      
+wall_image = pygame.transform.scale(unsized_wall, (wall_size[0],wall_size[1]))
+wall_amount = 15
+
+#bush
+bush_size = [35,35]
+unsized_bush = pygame.image.load("bush.png")
+bush_image = pygame.transform.scale(unsized_bush, (bush_size[0],bush_size[1]))
+bush_amount = 15
+
+# heart
+playerheart_size = [50,50]
+botheart_size = [15,15]
+unsized_heart = pygame.image.load("heart.png")
+playerheart_image = pygame.transform.scale(unsized_heart,(playerheart_size[0],playerheart_size[1]))
+botheart_image = pygame.transform.scale(unsized_heart,(botheart_size[0],botheart_size[1]))
+heart_pos = [10,10]
+
+#classes
+class Object:
+    def __init__(self,pos):
+        self.pos = pos
+    
+    def collision(self, otherObject):
+    # Controleer of beide objecten een rect attribuut hebben
+        if hasattr(self, 'rect') and hasattr(otherObject, 'rect'):
+            return self.rect.colliderect(otherObject.rect) #geeft True bij botsing, False bij geen botsing
+        return False  # Als een van de objecten geen rect heeft, return False
+        
+class MovingObject(Object):
+    def __init__(self,pos):
+        super().__init__(pos)
+        
+    def manage(self, bullet_list , yourobject, other_object):
+        for bullet in bullet_list[:]: #kopie van de lijst gebruiken om veilig bullets te verwijderen
+            if not bullet.launch(): #als launch False geeft
+                bullet_list.remove(bullet)
+            else:
+                rotated_bullet = pygame.transform.rotate(bullet.image, bullet.angle)  #kogel wordt geroteerd
+                screen.blit(rotated_bullet, bullet.rect.topleft)
+                
+                for object in list_of_objects:
+                    if bullet.collision(object):
+                        if isinstance(object, Wall) and isinstance(bullet, SpecialBullet):
+                            list_of_objects.remove(object)  # SpecialBullet detroyed walls
+                        elif isinstance(object, Bush):
+                            list_of_objects.remove(object)
+                        bullet_list.remove(bullet)
+                        break  # voorkomt dubbele verwijdering van een bullet bij 2 collisions
+                
+                if bullet not in bullet_list:  #Als de bullet al verwijderd is, niet verder checken
+                    continue 
+                        
+                if bullet.collision(other_object):
+                    bullet_list.remove(bullet)
+                    if isinstance(bullet, SpecialBullet):
+                        other_object.health -= 2  # SpecialBullet doet dubbel zoveel schade
+                    else:
+                        other_object.health -= 1
+                    hit_sound.play()
+                    break
+    def blit_rotated_image(surf, image, center_pos, angle, true_rect_size):
+        # roteer de image
+        rotated_image = pygame.transform.rotate(image, angle)
+        rotated_rect = rotated_image.get_rect(center=center_pos)
+
+        # teken de geroteerde afbeelding
+        surf.blit(rotated_image, rotated_rect.topleft)
+
+        # true_rect voor de rectangle die niet roteert, deze wordt gebruikt voor collisions ...
+        true_rect = pygame.Rect(
+            center_pos[0] - true_rect_size[0] // 2,
+            center_pos[1] - true_rect_size[1] // 2,
+            true_rect_size[0],
+            true_rect_size[1]
+            )
+
+        return true_rect
+class Player(MovingObject):
+    def __init__(self,pos,direction,player_speed,rotation_speed,angle,playerImg):
+        super().__init__(pos)
+        self.direction = direction
+        self.speed = player_speed
+        self.rotation_speed = rotation_speed
+        self.angle = angle
+        self.image = playerImg
+        self.rect = pygame.Rect(self.pos.x, self.pos.y, player_size[0], player_size[1])
+        self.last_shot_time = 0 #timer voor bullets    
+        self.ammo = 3
+        self.last_reload_time = pygame.time.get_ticks()
+        self.health = 5
+        self.has_special_bullet = True
+        
+    def player_movement(self):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_UP]:
+            self.speed = player_speed
+        elif keys[pygame.K_DOWN]:
+            self.speed = -player_speed
+        else:
+            self.speed = 0  
+        if keys[pygame.K_LEFT]:
+            self.angle += self.rotation_speed 
+        if keys[pygame.K_RIGHT]:
+            self.angle -= self.rotation_speed
+    
+    def update(self,lengte,hoogte):
+        dy = math.cos(math.radians(self.angle))
+        dx = math.sin(math.radians(self.angle))
+        self.direction = -pygame.math.Vector2(dx, dy)
+        # beweging samenvoegen
+        self.pos += self.speed * self.direction
+        
+        rotated_image = pygame.transform.rotate(self.image,self.angle)
+        self.rect.center = self.pos
+        self.rect = rotated_image.get_rect(center = self.pos)
+        
+        self.pos.x = max(0, min(self.pos.x, lengte))
+        self.pos.y = max(0, min(self.pos.y, hoogte))
+        
+        return rotated_image, self.rect   
+    
+    def reload_ammo(self):
+        current_time = pygame.time.get_ticks()        
+        if self.ammo < max_ammo and current_time - self.last_reload_time >= bullet_cooldown:
+            self.ammo += 1
+            self.last_reload_time = current_time
+    
+    def shoot(self):
+        current_time = pygame.time.get_ticks()  
+        keys = pygame.key.get_pressed() 
+        if keys[pygame.K_SPACE] and self.ammo > 0 and current_time - self.last_shot_time > 333: 
+            self.last_shot_time = current_time #tijd updaten
+            bullet = Bullet(self.pos.copy(), self.direction.copy(), bullet_speed, self.angle, bullet_image)
+            bullet_list_player.append(bullet)
+            self.ammo -= 1  
+            
+    def shoot_special(self):
+        current_time = pygame.time.get_ticks()
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_f] and self.has_special_bullet and current_time - self.last_shot_time > 500:
+            self.last_shot_time = current_time
+            special_bullet = SpecialBullet(self.pos.copy(), self.direction.copy(), bullet_speed, self.angle, special_bullet_image)
+            bullet_list_player.append(special_bullet)
+            self.has_special_bullet = False
+            
+    def player_grid_pos(self):  # dient voor niks denk ik 
+        grid_x = int(self.pos.x)//grid_size
+        grid_y = int(self.pos.y)//grid_size
+        return grid_x,grid_y
+     
+class Bot(MovingObject):
+    def __init__(self, pos,bot_image,bot_speed,bot_angle):
+        super().__init__(pos)
+        self.image = bot_image
+        self.rect = self.image.get_rect(center = self.pos)
+        self.speed = bot_speed
+        self.angle = bot_angle
+        self.last_shot_time = 0
+        self.state = "follow"
+        self.state_starttime = pygame.time.get_ticks()
+        self.state_duration = random.randint(1000, 2000)
+        self.last_moved_time = pygame.time.get_ticks()
+        self.direction = pygame.math.Vector2(player.pos.x - self.pos.x, player.pos.y - self.pos.y).normalize()
+        self.health = 5
+
+    def update_state(self):
+        current_time = pygame.time.get_ticks()
+        
+        # defines when in which state
+        if current_time - self.state_starttime > self.state_duration:             
+            if self.pos.distance_to(player.pos) < 400:
+                self.state = "follow"
+                        
+            elif random.randint(1,2) == 1:
+                self.state = "random" 
+                 
+            else:
+                self.state = "follow"
+            self.state_starttime = current_time
+        
+        # movement          
+            if self.state == "random":
+                self.state_duration = random.randint(1000,2500) # tussen 1 en 2,5 seconden
+                self.angle = random.randint(0,360)
+                self.direction = pygame.math.Vector2(math.cos(math.radians(self.angle+90)),-math.sin(math.radians(self.angle+90)))
+            self.last_moved_time = pygame.time.get_ticks()
+        if self.state == "follow":
+            self.state_duration = random.randint(1000,2500) # tussen 1 en 2,5 seconden
+            self.direction = pygame.math.Vector2(player.pos.x - self.pos.x, player.pos.y - self.pos.y).normalize()
+            self.angle = -math.degrees(math.atan2(self.direction.y,self.direction.x)) - 90
+      
+    def bot_movement(self,lengte,hoogte):
+        self.pos += self.speed * self.direction
+        # om niet te laggen
+        distance = self.pos.distance_to(player.pos)
+        if distance < 100:
+            self.speed = 0
+            
+        else:
+            self.speed = bot_speed
+        
+        self.pos.x = max(0, min(self.pos.x, lengte))
+        self.pos.y = max(0, min(self.pos.y, hoogte))
+
+        rotated_bot_image = pygame.transform.rotate(self.image,self.angle)
+        self.rect = rotated_bot_image.get_rect(center = self.pos)
+        return rotated_bot_image, self.rect
+    
+    def shoot(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_shot_time > bot_shooting_speed:
+            self.last_shot_time = current_time
+            self.direction = pygame.math.Vector2(player.pos.x - self.pos.x, player.pos.y - self.pos.y).normalize() #richting nog eens updaten zodat kogel juist georiënteerd is
+            self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
+            bullet = Bullet(self.pos.copy(), self.direction.copy(), bullet_speed, self.angle, bullet_image)
+            bullet_list_bot.append(bullet)
+
+    def move_random(self):
+        pass #nog aanvullen
+
+class Bullet(MovingObject):
+    def __init__(self, pos, direction, speed, angle, bulletIMG):
+        super().__init__(pos)
+        self.direction = direction
+        self.speed = speed
+        self.angle = angle
+        self.image = bulletIMG
+        self.rect = self.image.get_rect(center = self.pos)
+            
+    
+    def launch(self):
+        self.pos += self.speed * self.direction 
+        self.rect.center = self.pos
+        rotated_bullet = pygame.transform.rotate(self.image, -self.angle)
+        self.rect = rotated_bullet.get_rect(center = self.pos)
+        
+        
+        if self.pos.x < 0 or self.pos.x > screen_length or self.pos.y < 0 or self.pos.y > screen_height:
+           return False  # Geeft False om bullet te verwijderen uit de bullet lijst
+        return True  # Bullet blijft in de lijst
+        
+class SpecialBullet(Bullet):
+    def __init__(self, pos, direction, speed, angle, bulletIMG):
+        super().__init__(pos, direction, speed, angle, bulletIMG)
+        
+    def launch(self):
+        self.pos += self.speed * self.direction
+        self.rect.center = self.pos
+        rotated_bullet = pygame.transform.rotate(self.image, -self.angle)
+        self.rect = rotated_bullet.get_rect(center=self.pos)
+        
+        if self.pos.x < 0 or self.pos.x > screen_length or self.pos.y < 0 or self.pos.y > screen_height:
+            return False
+        return True
+
+class StationaryObject(Object):
+    def __init__(self,pos):
+        super().__init__(pos)
+        self.grid_x = int(self.pos[0]) // grid_size
+        self.grid_y = int(self.pos[1]) // grid_size
+
+class Wall(StationaryObject):
+    def __init__(self,pos, wallIMG):
+        super().__init__(pos)
+        self.image = wallIMG
+        self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
+
+    def draw(self):
+        screen.blit(self.image, self.rect.topleft)
+
+class Bush(StationaryObject):
+    def __init__(self,pos, bushIMG):
+        super().__init__(pos)
+        self.image = bushIMG
+        self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
+    
+    def draw(self):
+        screen.blit(self.image, self.rect.topleft)
+
+class Figure(Object):
+    def __init__(self,pos):
+        super().__init__(pos)
+
+class Screen():
+    def __init__(self,pos):
+        self.pos = pos
+    
+    def draw_reload_timer(player):
+        current_time = pygame.time.get_ticks()
+        if player.ammo < max_ammo:
+            time_since_reload = current_time - player.last_reload_time
+            progress = min(time_since_reload / bullet_cooldown, 1.0)
+            bar_width = 50
+            pygame.draw.rect(screen, (255, 0, 0), (ammo_pos[0], ammo_pos[1] + 40, bar_width, 10)) # lege bar tekenen
+            pygame.draw.rect(screen, (0, 255, 0), (ammo_pos[0], ammo_pos[1] + 40, progress * bar_width, 10)) # progress in bar tekenen
+    
+    def print_ammo(ammo_pos,bullet_image,player_ammo,spacing = bullet_size[0]):
+        for i in range(player_ammo):
+            screen.blit(bullet_image,(ammo_pos[0]+i*spacing,ammo_pos[1]))
+            
+    def draw_special_bullet_ammo(player, position=(10, 120)):
+        if player.has_special_bullet:
+            screen.blit(special_bullet_image, position)
+    
+    def player_hearts(heart_pos,player_health, heart_image,spacing = playerheart_size[0]):
+        for i in range(player_health):
+            screen.blit(heart_image,(heart_pos[0]+i*spacing,heart_pos[1]))
+    
+    def bot_hearts(bot_pos,bot_health,heart_image):
+        if bot_health >0:
+            spacing = bot_size[0] / bot_health
+        x_waarde = bot_pos.x - bot_size[0]/2
+        y_waarde = bot_pos.y - bot_size[1]
+        for i in range(bot_health):
+            screen.blit(heart_image,(x_waarde + i*spacing,y_waarde))
+
+    def draw_end_screen(message):
+        text = font.render(message, True, (255, 255, 255))
+        subtext = small_font.render("Press R to Restart, ESC to Quit or i for instructions", True, (255, 255, 255))
+        screen.blit(text, (screen_length // 2 - text.get_width() // 2, screen_height // 3))
+        screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height // 2))
+        
+    def draw_start_screen():
+        title = font.render("Tank Battle", True, (255, 255, 255))
+        subtitle = small_font.render("Press ENTER to Start or i for instructions", True, (255, 255, 255))
+        screen.blit(title, (screen_length // 2 - title.get_width() // 2, screen_height // 3))
+        screen.blit(subtitle, (screen_length // 2 - subtitle.get_width() // 2, screen_height // 2))
+        
+    def draw_instruction_screen():
+        instructions = [
+            "Move with arrow keys",
+            "Shoot bullets with SPACEBAR",
+            "Shoot special bullet with F key",
+            "Hearts represent your health",
+            "Defeat the enemy bot!"
+        ]
+        title = font.render("Instructions", True, (255, 255, 255))
+        screen.blit(title, (screen_length // 2 - title.get_width() // 2, 50))
+    
+        for i, line in enumerate(instructions): #positie van de tekst en de lijn bijhouden
+            line_render = small_font.render(line, True, (255, 255, 255))
+            screen.blit(line_render, (screen_length // 2 - line_render.get_width() // 2, 150 + i * 60)) #positie van de tekst bepalen
+    
+        subtext = small_font.render("Press BACKSPACE to return to title screen or ENTER to start", True, (255, 255, 255))
+        screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height - 100))
+    
+    def line_grids(start_pos, end_pos, grid_size):
+        grids = []
+        list_of_obstacles = []
+        current_time = pygame.time.get_ticks()
+        global last_print_time
+        
+        # zet alle grids waardoor de verbindingslijn gaat in een lijst
+        stappen = 100
+        for i in range(stappen + 1):
+            t = i / stappen
+            x = start_pos.x + (end_pos.x - start_pos.x) * t
+            y = start_pos.y + (end_pos.y - start_pos.y) * t
+            grid_x = int(x) // grid_size
+            grid_y = int(y) // grid_size
+            grid = (grid_x, grid_y)
+            if grid not in grids: # om geen dubbele te hebben
+                grids.append(grid)
+        # teken de grids
+        for grid in grids:
+            # grids tekenen
+            x = grid[0] * grid_size
+            y = grid[1] * grid_size
+            pygame.draw.rect(screen, (255, 255, 255), (x, y, grid_size, grid_size), 2)
+            # obstacles bijhouden (obstacles -> objecten die in de weg staan)
+            for object in list_of_objects:
+                if (grid[0],grid[1]) == (object.grid_x,object.grid_y):
+                    list_of_obstacles.append([object.grid_x,object.grid_y])
+        
+
+        # timer om te printen anders is het veel
+        if current_time - last_print_time > 1000:
+            print(list_of_obstacles)
+            last_print_time = current_time
+        return
+
+class Rectangle(Figure):
+    def __init__(self, pos, color, width, height):
+        super().__init__(pos)
+        self.color = color
+        self.width = width
+        self.height = height
+        
+    def draw(self):
+        pygame.draw.rect(screen, self.color, (self.pos[0], self.pos[1], self.width, self.height))
+
+class GenerateObject:
+    def __init__(self, amount, object, image):
+        self.amount = amount
+        self.object = object
+        self.image = image
+    
+    def generate(self):
+        for i in range(self.amount):
+            while True:
+                x, y = random.choice(available_positions)
+                object_pos = pygame.math.Vector2(x, y)
+                
+                if object_pos.distance_to(player.pos) > 2*player_size[0] and object_pos.distance_to(bot.pos) > 2*bot_size[0]:
+                    wall = self.object((x, y), self.image)
+                    list_of_objects.append(wall)
+                    available_positions.remove((x, y))
+                    break 
+
+#objects
+player = Player(player_pos, direction, player_speed, rotation_speed, angle,player_image)
+bot = Bot(bot_pos,bot_image,bot_speed,bot_angle)
+
+#walls and bushes generaten
+list_of_objects = []
+available_positions = [
+    (x, y)
+    for x in range(wall_size[0]//2, screen_length - wall_size[0]//2, wall_size[0])
+    for y in range(wall_size[1]//2, screen_height - wall_size[1]//2, wall_size[1])
+] 
+
+walls = GenerateObject(amount= wall_amount , object= Wall, image = wall_image)
+walls.generate()
+bushes = GenerateObject(amount= bush_amount , object= Bush, image= bush_image)
+bushes.generate()
+
+
+#game state op running zetten en welk lettertype tekst
+game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost"
+font = pygame.font.SysFont(None, 100)
+small_font = pygame.font.SysFont(None, 50)
+
+#gameloop
+running = True
+while running:
+    clock.tick(20)
+    screen.blit(background,(0,0))
+    keys = pygame.key.get_pressed()
+    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+    
+    if game_state == "start":
+        Screen.draw_start_screen()
+        if keys[pygame.K_KP_ENTER] or keys[pygame.K_RETURN]:  
+            game_state = "running"
+        if keys[pygame.K_i]:
+            game_state = "instructions"
+            
+    elif game_state == "instructions":
+        Screen.draw_instruction_screen()
+        if keys[pygame.K_BACKSPACE]:
+            game_state = "start"
+        if keys[pygame.K_KP_ENTER]:  
+            game_state = "running"
+    
+    
+    elif game_state == "running":
+        
+        # alle functies laten runnen
+        previous_pos = player.pos.copy()
+        player.player_movement()  
+        rotated_image, player_rect = player.update(screen_length, screen_height)
+        player.shoot()
+        player.shoot_special()
+        player.reload_ammo()
+        player_grid_pos = player.player_grid_pos() # dient voor niks denk ik
+        
+        previous_bot_pos = bot.pos.copy()
+        rotated_bot_image,bot_rect = bot.bot_movement(screen_length,screen_height)
+        bot.shoot()
+        bot.update_state()
+
+        
+        #managen bullets and collsion bullets of player and bot
+        player.manage(bullet_list= bullet_list_player, yourobject = "player", other_object = bot)
+        bot.manage(bullet_list = bullet_list_bot, yourobject = "bot", other_object = player)
+        
+      
+        #collision player and wall, bot and wall
+        for object in list_of_objects:
+            if player.collision(object):
+                player.pos = previous_pos
+                player_rect.center = player.pos
+            
+            if bot.collision(object): #geen elif want anders gaat die alleen player doen bij twee botsingen die tegelijk zijn
+                bot.pos = previous_bot_pos
+                bot_rect.center = bot.pos
+     
+        #walls en bushes tekenen 
+        for object in list_of_objects:
+            if hasattr(object, "draw"):
+                object.draw()
+                        
+        # levens en ammo tekenen
+        Screen.player_hearts(heart_pos,player.health,playerheart_image)
+        Screen.bot_hearts(previous_bot_pos,bot.health,botheart_image)
+        Screen.print_ammo(ammo_pos,bullet_image,player.ammo)
+        Screen.draw_special_bullet_ammo(player)
+        Screen.draw_reload_timer(player)
+        player_rect = MovingObject.blit_rotated_image(screen, player.image, player.pos, player.angle, player_size)
+        bot_rect = MovingObject.blit_rotated_image(screen, bot.image, bot.pos, bot.angle, bot_size)
+
+        #rect tekenen om collision te begrijpen
+        pygame.draw.rect(screen, (255, 0, 0), player_rect, 2)
+        pygame.draw.rect(screen, (0, 0, 255), bot_rect, 2)
+        pygame.draw.line(screen,(255,0,0),bot.pos,player.pos)
+        grids = Screen.line_grids(player.pos, bot.pos, grid_size)
+        
+
+        if player.health <= 0:
+            game_state = "lost"
+        elif bot.health <= 0:
+            game_state = "won"
+
+    # Win or Loss       
+    elif game_state in ["won", "lost","start"]:
+        # reset alles
+        player.health = 5
+        bot.health = 5
+        player.ammo = max_ammo
+        player.has_special_bullet = True
+        player.direction = pygame.math.Vector2(0, 1)
+        bot.direction = pygame.math.Vector2(0, -1)
+        player.pos = pygame.math.Vector2(100, screen_height / 2)
+        bot.pos = pygame.math.Vector2(screen_length - 100, screen_height / 2)
+        bullet_list_player.clear()
+        bullet_list_bot.clear()
+        
+        if game_state == "won":
+            Screen.draw_end_screen("YOU WON!")
+        else:
+            Screen.draw_end_screen("YOU LOST!")
+
+        
+        if keys[pygame.K_r] or keys[pygame.K_KP_ENTER]:  
+            game_state = "running"
+            
+        if keys[pygame.K_i]:
+            game_state = "instructions"
+
+
+    # exiting
+    if keys[pygame.K_ESCAPE]:
+        running = False
+    
+    pygame.display.update()
+
+pygame.quit()
