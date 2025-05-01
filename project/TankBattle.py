@@ -86,13 +86,24 @@ unsized_bush = pygame.image.load("bush.png")
 bush_image = pygame.transform.scale(unsized_bush, (bush_size[0],bush_size[1]))
 bush_amount = 15
 
-# heart
+#heart
 playerheart_size = [50,50]
 botheart_size = [15,15]
 unsized_heart = pygame.image.load("heart.png")
 playerheart_image = pygame.transform.scale(unsized_heart,(playerheart_size[0],playerheart_size[1]))
 botheart_image = pygame.transform.scale(unsized_heart,(botheart_size[0],botheart_size[1]))
 heart_pos = [10,10]
+
+#shield
+playershield_size = [50,50]
+botshield_size = [15,15]
+shield_size =  [35,35]
+unsized_shield = pygame.image.load("shield.png")
+playershield_image = pygame.transform.scale(unsized_shield,(playershield_size[0],playershield_size[1]))
+botshield_image = pygame.transform.scale(unsized_shield,(botshield_size[0],botshield_size[1]))
+shield_image = pygame.transform.scale(unsized_shield,(shield_size[0],shield_size[1]))
+next_shield_time = pygame.time.get_ticks() + random.randint(10000, 30000)
+shield = None #er kan tegelijk maar 1 shield in de game zijn, in het begin geen shield
 
 #classes
 class Object:
@@ -131,12 +142,14 @@ class MovingObject(Object):
                         
                 if bullet.collision(other_object):
                     bullet_list.remove(bullet)
-                    if isinstance(bullet, SpecialBullet):
-                        other_object.health -= 2  # SpecialBullet doet dubbel zoveel schade
+                    if hasattr(other_object, 'has_shield') and other_object.has_shield:
+                        other_object.has_shield = False  # Shield verliest bescherming
                     else:
-                        other_object.health -= 1
-                    hit_sound.play()
+                        damage = 2 if isinstance(bullet, SpecialBullet) else 1
+                        other_object.health -= damage
+                        hit_sound.play()
                     break
+
     def blit_rotated_image(surf, image, center_pos, angle, true_rect_size):
         # roteer de image
         rotated_image = pygame.transform.rotate(image, angle)
@@ -168,6 +181,7 @@ class Player(MovingObject):
         self.last_reload_time = pygame.time.get_ticks()
         self.health = 5
         self.has_special_bullet = True
+        self.has_shield = False
         
     def player_movement(self):
         keys = pygame.key.get_pressed()
@@ -241,6 +255,7 @@ class Bot(MovingObject):
         self.last_moved_time = pygame.time.get_ticks()
         self.direction = pygame.math.Vector2(player.pos.x - self.pos.x, player.pos.y - self.pos.y).normalize()
         self.health = 5
+        self.has_shield = False
 
     def update_state(self):
         current_time = pygame.time.get_ticks()
@@ -331,6 +346,15 @@ class StationaryObject(Object):
         self.grid_x = int(self.pos[0]) // grid_size
         self.grid_y = int(self.pos[1]) // grid_size
 
+class Shield(StationaryObject):
+    def __init__(self, pos, image):
+        super().__init__(pos)
+        self.image = image
+        self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
+
+    def draw(self):
+        screen.blit(self.image, self.rect.topleft)
+
 class Wall(StationaryObject):
     def __init__(self,pos, wallIMG):
         super().__init__(pos)
@@ -385,6 +409,20 @@ class Screen():
         y_waarde = bot_pos.y - bot_size[1]
         for i in range(bot_health):
             screen.blit(heart_image,(x_waarde + i*spacing,y_waarde))
+            
+    def draw_shield_indicator(player, bot):
+        #shield player wordt naast health getoond
+        if player.has_shield:
+            x = heart_pos[0] + player.health * playerheart_size[0] + 5  #rechts van de laatste hartje
+            y = heart_pos[1] 
+            screen.blit(playershield_image, (x, y))
+    
+        #shield van de bot wordt naast de hartjes van de bot getoond
+        if bot.has_shield:
+            spacing = bot_size[0] / max(bot.health, 1)
+            bot_heart_x = bot.pos.x - bot_size[0]/2 + bot.health * spacing
+            bot_heart_y = bot.pos.y - bot_size[1]
+            screen.blit(botshield_image, (bot_heart_x + 5, bot_heart_y))
 
     def draw_end_screen(message):
         text = font.render(message, True, (255, 255, 255))
@@ -543,6 +581,25 @@ while running:
         bot.shoot()
         bot.update_state()
 
+        #shields spawnen
+        current_time = pygame.time.get_ticks()
+        if current_time >= next_shield_time and shield is None: #als interval gedaan is en er is geen shield in de game 
+            random.shuffle(available_positions) #lijst random door elkaar shuffelen 
+            
+            for (x, y) in available_positions: #positie zoeken voor het shield
+                new_pos = pygame.math.Vector2(x, y)
+                
+                shield_safe_to_spawn = True
+                for obj in list_of_objects: #extra controleren of shield zeker niet op een wall of bush staat
+                    if obj.rect.collidepoint(x, y):
+                        shield_safe_to_spawn = False
+                        break
+                    
+                if new_pos.distance_to(player.pos) > 100 and new_pos.distance_to(bot.pos) > 100 and shield_safe_to_spawn: #shield ook niet te dicht bij player en bot
+                    shield = Shield((x, y), shield_image)
+                    break
+                
+            next_shield_time = current_time + random.randint(10000, 30000)
         
         #managen bullets and collsion bullets of player and bot
         player.manage(bullet_list= bullet_list_player, yourobject = "player", other_object = bot)
@@ -558,11 +615,25 @@ while running:
             if bot.collision(object): #geen elif want anders gaat die alleen player doen bij twee botsingen die tegelijk zijn
                 bot.pos = previous_bot_pos
                 bot_rect.center = bot.pos
+             
+        #collision shield and player/bot
+        if shield:
+            if player.rect.colliderect(shield.rect):
+                player.has_shield = True
+                shield = None
+            elif bot.rect.colliderect(shield.rect):
+                bot.has_shield = True
+                shield = None
      
         #walls en bushes tekenen 
         for object in list_of_objects:
             if hasattr(object, "draw"):
                 object.draw()
+                
+        #shield tekenen: als er een shield is moet deze getekend worden
+        if shield:
+            shield.draw() 
+            
                         
         # levens en ammo tekenen
         Screen.player_hearts(heart_pos,player.health,playerheart_image)
@@ -570,6 +641,7 @@ while running:
         Screen.print_ammo(ammo_pos,bullet_image,player.ammo)
         Screen.draw_special_bullet_ammo(player)
         Screen.draw_reload_timer(player)
+        Screen.draw_shield_indicator(player, bot)
         player_rect = MovingObject.blit_rotated_image(screen, player.image, player.pos, player.angle, player_size)
         bot_rect = MovingObject.blit_rotated_image(screen, bot.image, bot.pos, bot.angle, bot_size)
 
@@ -599,6 +671,10 @@ while running:
         player.angle = 0
         bullet_list_player.clear()
         bullet_list_bot.clear()
+        shield = None
+        player.has_shield = False
+        bot.has_shield = False
+        next_shield_time = pygame.time.get_ticks() + random.randint(10000, 30000)
         
         if game_state == "won":
             Screen.draw_end_screen("YOU WON!")
