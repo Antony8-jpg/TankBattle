@@ -323,14 +323,7 @@ class SpecialBullet(Bullet):
         super().__init__(pos, direction, speed, angle, bulletIMG)
         
     def launch(self):
-        self.pos += self.speed * self.direction
-        self.rect.center = self.pos
-        rotated_bullet = pygame.transform.rotate(self.image, -self.angle)
-        self.rect = rotated_bullet.get_rect(center=self.pos)
-        
-        if self.pos.x < 0 or self.pos.x > screen_length or self.pos.y < 0 or self.pos.y > screen_height:
-            return False
-        return True
+        return super().launch()
 
 class StationaryObject(Object):
     def __init__(self,pos):
@@ -451,7 +444,6 @@ class Screen():
                 if (grid[0],grid[1]) == (object.grid_x,object.grid_y):
                     list_of_obstacles.append([object.grid_x,object.grid_y])
         
-
         # timer om te printen anders is het veel
         if current_time - last_print_time > 1000:
             print(list_of_obstacles)
@@ -604,6 +596,7 @@ while running:
         bot.direction = pygame.math.Vector2(0, -1)
         player.pos = pygame.math.Vector2(100, screen_height / 2)
         bot.pos = pygame.math.Vector2(screen_length - 100, screen_height / 2)
+        player.angle = 0
         bullet_list_player.clear()
         bullet_list_bot.clear()
         
