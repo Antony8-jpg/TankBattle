@@ -167,6 +167,7 @@ class MovingObject(Object):
             )
 
         return true_rect
+    
 class Player(MovingObject):
     def __init__(self,pos,direction,player_speed,rotation_speed,angle,playerImg):
         super().__init__(pos)
@@ -346,6 +347,9 @@ class StationaryObject(Object):
         self.grid_x = int(self.pos[0]) // grid_size
         self.grid_y = int(self.pos[1]) // grid_size
 
+    def draw(self):
+        screen.blit(self.image, self.rect.topleft)
+
 class Shield(StationaryObject):
     def __init__(self, pos, image):
         super().__init__(pos)
@@ -353,7 +357,7 @@ class Shield(StationaryObject):
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
 
     def draw(self):
-        screen.blit(self.image, self.rect.topleft)
+        return super().draw()
 
 class Wall(StationaryObject):
     def __init__(self,pos, wallIMG):
@@ -362,7 +366,7 @@ class Wall(StationaryObject):
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
 
     def draw(self):
-        screen.blit(self.image, self.rect.topleft)
+       return super().draw()
 
 class Bush(StationaryObject):
     def __init__(self,pos, bushIMG):
@@ -371,11 +375,7 @@ class Bush(StationaryObject):
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
     
     def draw(self):
-        screen.blit(self.image, self.rect.topleft)
-
-class Figure(Object):
-    def __init__(self,pos):
-        super().__init__(pos)
+        return super().draw()
 
 class Screen():
     def __init__(self,pos):
@@ -487,16 +487,6 @@ class Screen():
             print(list_of_obstacles)
             last_print_time = current_time
         return
-
-class Rectangle(Figure):
-    def __init__(self, pos, color, width, height):
-        super().__init__(pos)
-        self.color = color
-        self.width = width
-        self.height = height
-        
-    def draw(self):
-        pygame.draw.rect(screen, self.color, (self.pos[0], self.pos[1], self.width, self.height))
 
 class GenerateObject:
     def __init__(self, amount, object, image):
