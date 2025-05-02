@@ -103,7 +103,8 @@ shield_size =  [35,35]
 playershield_image = GameImage("shield.png", playershield_size).image
 botshield_image = GameImage("shield.png", botshield_size).image
 shield_image = GameImage("shield.png", shield_size).image 
-next_shield_time = pygame.time.get_ticks() + random.randint(10000, 30000)
+shield_timer_active = False
+next_shield_time = 0  #wordt later geüpdated
 shield = None #er kan tegelijk maar 1 shield in de game zijn, in het begin geen shield
 
 #classes
@@ -145,6 +146,7 @@ class MovingObject(Object):
                     bullet_list.remove(bullet)
                     if hasattr(other_object, 'has_shield') and other_object.has_shield:
                         other_object.has_shield = False  # Shield verliest bescherming
+                        
                     else:
                         damage = 2 if isinstance(bullet, SpecialBullet) else 1
                         other_object.health -= damage
@@ -720,10 +722,15 @@ while running:
         rotated_bot_image,bot_rect = bot.bot_movement(screen_length,screen_height)
         bot.shoot()
         bot.update_state()
+        
+        #shield timer starten als er geen shield in de game is
+        if shield_timer_active == False and shield is None and player.has_shield == False and bot.has_shield == False:
+            next_shield_time = pygame.time.get_ticks() + random.randint(10000, 30000)
+            shield_timer_active = True
 
         #shields spawnen
         current_time = pygame.time.get_ticks()
-        if current_time >= next_shield_time and shield is None: #als interval gedaan is en er is geen shield in de game 
+        if current_time >= next_shield_time and shield is None and player.has_shield == False and bot.has_shield == False: #als interval gedaan is en er is geen shield in de game 
             random.shuffle(available_positions) #lijst random door elkaar shuffelen 
             
             for (x, y) in available_positions: #positie zoeken voor het shield
@@ -737,9 +744,9 @@ while running:
                     
                 if new_pos.distance_to(player.pos) > 100 and new_pos.distance_to(bot.pos) > 100 and shield_safe_to_spawn: #shield ook niet te dicht bij player en bot
                     shield = Shield((x, y), shield_image)
+                    shield_timer_active = False
                     break
                 
-            next_shield_time = current_time + random.randint(10000, 30000)
         
         #managen bullets and collsion bullets of player and bot
         player.manage(bullet_list= bullet_list_player, yourobject = "player", other_object = bot)
