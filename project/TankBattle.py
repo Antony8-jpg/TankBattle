@@ -2,14 +2,12 @@ import pygame
 import math
 import random
 from pygame import mixer
-#import heapq # voor de grid
 
 # TO DO:
 #bot movement: a-star op bepaalde momenten 
 #power ups
 #verschillende soorten kogels en interacties met de walls of bushes
 #meerdere bots met verschillende eigenschappen 
-
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -253,89 +251,76 @@ class Bot(MovingObject):
         self.speed = bot_speed
         self.angle = bot_angle
         self.last_shot_time = 0
+        self.health = 5
+        self.has_shield = False
+
+        #voor bot movement
         self.state = "follow"
         self.state_starttime = pygame.time.get_ticks()
         self.state_duration = random.randint(2000, 4000)
-        self.last_moved_time = pygame.time.get_ticks()
-        self.direction = pygame.math.Vector2(player.pos.x - self.pos.x, player.pos.y - self.pos.y).normalize()
-        self.last_position = self.pos.copy()
-        self.last_path_update_time = pygame.time.get_ticks()
-        self.health = 5
-        self.has_shield = False
+        self.direction = pygame.math.Vector2(0, 1)
         self.path = []
+        self.goal = None
+        self.last_path_update_time = 0
+
+      
+        self.last_move_time = pygame.time.get_ticks()
+        self.last_position_check = self.pos.copy()
+        self.stuck_duration = 1000  # milliseconds
         
-    def update_state(self):
+    def bot_movement(self):
         current_time = pygame.time.get_ticks()
+        self.start = Grid.screen_to_grid(self.pos)
+        
+        # switchen tussen random en follow movement
+        # random --> beweegt naar een random punt door astar
+        # follow --> beweegt naar de player door astar
 
-        # Detect if stuck
-        movement_threshold = 1.5
-        time_since_last_check = current_time - self.last_moved_time
-
-        if time_since_last_check > 500:
-            if self.pos.distance_to(self.last_position) < movement_threshold:
-                self.state = "follow"
-                self.path = []  # force new path
-            else:
-                self.last_position = self.pos.copy()
-            self.last_moved_time = current_time
-
-        # Time-based state switch
         if current_time - self.state_starttime > self.state_duration:
-            self.state = random.choice(["random", "follow"])
             self.state_duration = random.randint(2000, 4000)
             self.state_starttime = current_time
+            if self.pos.distance_to(player.pos) < 400:
+                self.state = "follow"
+            else:
+                self.state = random.choices(["random", "follow"], weights=[1, 3])[0]
 
             if self.state == "random":
-                self.angle = random.randint(0, 360)
-                self.direction = pygame.math.Vector2(
-                    math.cos(math.radians(self.angle + 90)),
-                    -math.sin(math.radians(self.angle + 90))
-                )
-
-        # === FOLLOW STATE ===
+                goal_x = random.randint(0,screen_length)
+                goal_y = random.randint(0,screen_height)
+                self.random_goal_vector = pygame.math.Vector2(goal_x,goal_y)
+                self.goal = Grid.screen_to_grid(self.random_goal_vector)
+        
         if self.state == "follow":
-            if current_time - self.last_path_update_time > 300 or not self.path:
-                grid = Grid.build_grid()
-                start = Grid.screen_to_grid(self.pos)
-                goal = Grid.screen_to_grid(player.pos)
-                new_path = Grid.astar(start, goal, grid)
+            self.goal = Grid.screen_to_grid(player.pos)
+        elif self.state == "random":
+            self.goal = Grid.screen_to_grid(self.random_goal_vector)
 
-                if new_path:
-                    self.path = new_path
-                else:
-                    self.state = "random"
-                    self.state_starttime = current_time
-                    self.state_duration = random.randint(2000, 4000)
-                    self.angle = random.randint(0, 360)
-                    self.direction = pygame.math.Vector2(
-                        math.cos(math.radians(self.angle + 90)),
-                        -math.sin(math.radians(self.angle + 90))
-                    )
-                    return
-
+        if current_time - self.last_path_update_time > 500 or not self.path:
+                self.grid = Grid.build_grid() 
+                self.path = Grid.astar(self.start, self.goal, self.grid)
                 self.last_path_update_time = current_time
+                
 
+        if self.path:
+            next_step = Grid.grid_to_screen(self.path[0])
+            if self.pos.distance_to(next_step) < 5:
+                self.path.pop(0)
             if self.path:
                 next_step = Grid.grid_to_screen(self.path[0])
-                if self.pos.distance_to(next_step) < 5:
-                    self.path.pop(0)
-                if self.path:
-                    next_step = Grid.grid_to_screen(self.path[0])
-                    self.direction = (next_step - self.pos).normalize()
-                    self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
-
-
-
-    def bot_movement(self,lengte,hoogte):
-        self.pos += self.speed * self.direction
-        # om niet te laggen
-        distance = self.pos.distance_to(player.pos)
-        if distance < 100:
-            self.speed = 0
+                self.direction = (next_step - self.pos).normalize()
+                self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
             
-        else:
-            self.speed = bot_speed
-        
+            for grid in self.path:
+                    # grids tekenen
+                    x = grid[0] * grid_size
+                    y = grid[1] * grid_size
+                    pygame.draw.rect(screen, (255, 255, 255), (x, y, grid_size, grid_size), 2)
+
+
+        self.pos += self.speed * self.direction
+
+
+    def bot_update(self,lengte,hoogte):
         self.pos.x = max(0, min(self.pos.x, lengte))
         self.pos.y = max(0, min(self.pos.y, hoogte))
 
@@ -347,13 +332,10 @@ class Bot(MovingObject):
         current_time = pygame.time.get_ticks()
         if current_time - self.last_shot_time > bot_shooting_speed:
             self.last_shot_time = current_time
-            self.direction = pygame.math.Vector2(player.pos.x - self.pos.x, player.pos.y - self.pos.y).normalize() #richting nog eens updaten zodat kogel juist georiënteerd is
             self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
             bullet = Bullet(self.pos.copy(), self.direction.copy(), bullet_speed, self.angle, bullet_image)
             bullet_list_bot.append(bullet)
 
-    def move_random(self):
-        pass #nog aanvullen
 
 class Bullet(MovingObject):
     def __init__(self, pos, direction, speed, angle, bulletIMG):
@@ -561,7 +543,7 @@ class Screen():
 
 class Grid:
     
-    def line_grids(start_pos, end_pos, grid_size):
+    def line_grids(start_pos, end_pos, grid_size):# debug functie voor beweging bot: verbindingslijn tussen bot en player en grids inkleuren die de lijn snijdt
         grids = []
         list_of_obstacles = []
         current_time = pygame.time.get_ticks()
@@ -578,7 +560,7 @@ class Grid:
             grid = (grid_x, grid_y)
             if grid not in grids: # om geen dubbele te hebben
                 grids.append(grid)
-        # teken de grids
+        # teken de grids die op de verbindingslijn staan
         for grid in grids:
             # grids tekenen
             x = grid[0] * grid_size
@@ -595,7 +577,7 @@ class Grid:
             last_print_time = current_time
         return
 
-    def screen_to_grid(pos):
+    def screen_to_grid(pos): 
         return (int(pos.x) // grid_size, int(pos.y) // grid_size)
 
     def grid_to_screen(grid_pos):
@@ -603,8 +585,8 @@ class Grid:
 
     def build_grid(): # maak een de map een grid van nullen en 1 , 0 als vrij en 1 als er een obstacle is
         grid = []
-        for i in range(grid_length): # maakt een lijst van nullen 
-            row = [0] * grid_height
+        for i in range(grid_length): # verandert elke cel in een 0 
+            row = [0] * grid_height 
             grid.append(row)
 
         for obj in list_of_objects: # vervangt de 0 door een 1 als er een obstacle is
@@ -639,7 +621,7 @@ class Grid:
         # alle andere grids zijn dan vrij -> True
         return True
 
-    def astar(start_cell, goal_cell, grid):
+    def astar(start_cell, goal_cell, grid): # code van chatgpt
         from heapq import heappush, heappop
 
         # priority queue van estimated_total_cost, cel
@@ -667,8 +649,7 @@ class Grid:
                 return path
 
             # definieer alle mogelijke richtingen : up, down, left, right
-            directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
             for direction_x, direction_y in directions:
                 neighbor_x = current_cell[0] + direction_x
                 neighbor_y = current_cell[1] + direction_y
@@ -682,11 +663,17 @@ class Grid:
 
                 # skip als de cel ernaast niet "walkable" is
                 is_walkable = Grid.is_area_clear(grid, neighbor_x, neighbor_y, clearance=1)
+                # Prevent diagonal corner cutting
+                if abs(direction_x) == 1 and abs(direction_y) == 1:
+                    if grid[neighbor_x][current_cell[1]] == 1 or grid[current_cell[0]][neighbor_y] == 1:
+                        continue  # Can't move diagonally past a corner
                 if not is_walkable:
                     continue
 
-                # temporary cost van start tot neighbor
-                temporary_cost = cost_from_start[current_cell] + 1
+                # temporary cost van start tot neighbor, 1,41 voor diagonaal, 1 voor rechte lijn
+                step_cost = math.sqrt(2) if abs(direction_x) + abs(direction_y) == 2 else 1
+                
+                temporary_cost = cost_from_start[current_cell] + step_cost
 
                 # als deze pad beter is dan de vorige
                 if neighbor_cell not in cost_from_start or temporary_cost < cost_from_start[neighbor_cell]:
@@ -782,9 +769,9 @@ while running:
         
         #bot
         previous_bot_pos = bot.pos.copy()
-        rotated_bot_image,bot_rect = bot.bot_movement(screen_length,screen_height)
+        rotated_bot_image,bot_rect = bot.bot_update(screen_length,screen_height)
         bot.shoot()
-        bot.update_state()
+        bot.bot_movement()
         
         #shield
         shield_spawner.update()
