@@ -431,6 +431,14 @@ class Screen():
             bar_width = 50
             pygame.draw.rect(screen, (255, 0, 0), (ammo_pos[0], ammo_pos[1] + 40, bar_width, 10)) # lege bar tekenen
             pygame.draw.rect(screen, (0, 255, 0), (ammo_pos[0], ammo_pos[1] + 40, progress * bar_width, 10)) # progress in bar tekenen
+            
+    def available_positions():
+        available_positions = [
+             (x, y)
+             for x in range(wall_size[0]//2, screen_length - wall_size[0]//2, wall_size[0])
+             for y in range(wall_size[1]//2, screen_height - wall_size[1]//2, wall_size[1])
+         ]
+        return available_positions
     
     def print_ammo(ammo_pos,bullet_image,player_ammo,spacing = bullet_size[0]):
         for i in range(player_ammo):
@@ -663,20 +671,14 @@ player = Player(player_pos, direction, player_speed, rotation_speed, angle,playe
 bot = Bot(bot_pos,bot_image,bot_speed,bot_angle)
 
 #walls and bushes generaten
-list_of_objects = []
-available_positions = [
-    (x, y)
-    for x in range(wall_size[0]//2, screen_length - wall_size[0]//2, wall_size[0])
-    for y in range(wall_size[1]//2, screen_height - wall_size[1]//2, wall_size[1])
-] 
-
+list_of_objects = [] #walls en bushes worden in deze lijst geplaatst
+available_positions = Screen.available_positions()
 walls = GenerateObject(amount= wall_amount , object= Wall, image = wall_image)
 walls.generate()
 bushes = GenerateObject(amount= bush_amount , object= Bush, image= bush_image)
 bushes.generate()
 
-
-#game state op running zetten en welk lettertype tekst
+#game state op start zetten en welk lettertype tekst
 game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost"
 font = pygame.font.SysFont(None, 100)
 small_font = pygame.font.SysFont(None, 50)
@@ -822,6 +824,14 @@ while running:
         player.has_shield = False
         bot.has_shield = False
         next_shield_time = pygame.time.get_ticks() + random.randint(10000, 30000)
+        
+        #walls and bushes generaten
+        list_of_objects.clear()
+        available_positions = Screen.available_positions()
+        walls = GenerateObject(amount= wall_amount , object= Wall, image = wall_image)
+        walls.generate()
+        bushes = GenerateObject(amount= bush_amount , object= Bush, image= bush_image)
+        bushes.generate()
         
         if game_state == "won":
             Screen.draw_end_screen("YOU WON!")
