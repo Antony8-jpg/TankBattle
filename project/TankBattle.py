@@ -400,6 +400,61 @@ class Shield(StationaryObject):
 
     def draw(self):
         return super().draw()
+    
+class ShieldSpawner:
+    def __init__(self, shield_image, player, bot, available_positions, list_of_objects):
+        self.shield_image = shield_image
+        self.player = player
+        self.bot = bot
+        self.available_positions = available_positions
+        self.list_of_objects = list_of_objects
+        self.shield = None
+        self.next_shield_time = 0
+        self.timer_active = False
+
+    def update(self):
+        current_time = pygame.time.get_ticks()
+
+        #timer wordt gestart 
+        if not self.timer_active and self.shield is None and not self.player.has_shield and not self.bot.has_shield:
+            self.next_shield_time = current_time + random.randint(10000, 30000)
+            self.timer_active = True
+
+        #shield wordt gespawnd als de timer voorbij is en er geen shield in de game is
+        if current_time >= self.next_shield_time and self.shield is None and not self.player.has_shield and not self.bot.has_shield:
+            random.shuffle(self.available_positions)
+            for (x, y) in self.available_positions:
+                new_pos = pygame.math.Vector2(x, y)
+
+                
+                shield_safe_to_spawn = True
+                for obj in list_of_objects: #extra controleren of shield zeker niet op een wall of bush staat
+                    if obj.rect.collidepoint(x, y):
+                        shield_safe_to_spawn = False
+                        break
+
+                if new_pos.distance_to(self.player.pos) > 100 and new_pos.distance_to(self.bot.pos) > 100 and shield_safe_to_spawn:
+                    self.shield = Shield((x, y), self.shield_image)
+                    self.timer_active = False
+                    break
+
+        #collision met player/bot en shield
+        if self.shield:
+            if self.player.rect.colliderect(self.shield.rect):
+                self.player.has_shield = True
+                self.shield = None
+            elif self.bot.rect.colliderect(self.shield.rect):
+                self.bot.has_shield = True
+                self.shield = None
+
+    def draw(self):
+        if self.shield:
+            self.shield.draw()
+
+    def reset(self):
+        self.shield = None
+        self.timer_active = False
+        self.next_shield_time = 0
 
 class Wall(StationaryObject):
     def __init__(self,pos, wallIMG):
@@ -648,7 +703,8 @@ class Grid:
         # If we exhaust all options without reaching the goal, return None
         return None
 
-class GenerateObject:
+#klasse met een methode om walls en bushes aan te maken op random posities 
+class GenerateObject: 
     def __init__(self, amount, object, image):
         self.amount = amount
         self.object = object
@@ -677,6 +733,9 @@ walls = GenerateObject(amount= wall_amount , object= Wall, image = wall_image)
 walls.generate()
 bushes = GenerateObject(amount= bush_amount , object= Bush, image= bush_image)
 bushes.generate()
+
+#shieldspawner aanmaken
+shield_spawner = ShieldSpawner(shield_image, player, bot, available_positions, list_of_objects)
 
 #game state op start zetten en welk lettertype tekst
 game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost"
@@ -712,6 +771,7 @@ while running:
     elif game_state == "running":
         
         # alle functies laten runnen
+        #player
         previous_pos = player.pos.copy()
         player.player_movement()  
         rotated_image, player_rect = player.update(screen_length, screen_height)
@@ -720,41 +780,20 @@ while running:
         player.reload_ammo()
         player_grid_pos = player.player_grid_pos() # dient voor niks denk ik
         
+        #bot
         previous_bot_pos = bot.pos.copy()
         rotated_bot_image,bot_rect = bot.bot_movement(screen_length,screen_height)
         bot.shoot()
         bot.update_state()
         
-        #shield timer starten als er geen shield in de game is
-        if shield_timer_active == False and shield is None and player.has_shield == False and bot.has_shield == False:
-            next_shield_time = pygame.time.get_ticks() + random.randint(10000, 30000)
-            shield_timer_active = True
-
-        #shields spawnen
-        current_time = pygame.time.get_ticks()
-        if current_time >= next_shield_time and shield is None and player.has_shield == False and bot.has_shield == False: #als interval gedaan is en er is geen shield in de game 
-            random.shuffle(available_positions) #lijst random door elkaar shuffelen 
-            
-            for (x, y) in available_positions: #positie zoeken voor het shield
-                new_pos = pygame.math.Vector2(x, y)
+        #shield
+        shield_spawner.update()
+        shield_spawner.draw()
                 
-                shield_safe_to_spawn = True
-                for obj in list_of_objects: #extra controleren of shield zeker niet op een wall of bush staat
-                    if obj.rect.collidepoint(x, y):
-                        shield_safe_to_spawn = False
-                        break
-                    
-                if new_pos.distance_to(player.pos) > 100 and new_pos.distance_to(bot.pos) > 100 and shield_safe_to_spawn: #shield ook niet te dicht bij player en bot
-                    shield = Shield((x, y), shield_image)
-                    shield_timer_active = False
-                    break
-                
-        
         #managen bullets and collsion bullets of player and bot
         player.manage(bullet_list= bullet_list_player, yourobject = "player", other_object = bot)
         bot.manage(bullet_list = bullet_list_bot, yourobject = "bot", other_object = player)
         
-      
         #collision player and wall, bot and wall
         for object in list_of_objects:
             if player.collision(object):
@@ -764,26 +803,12 @@ while running:
             if bot.collision(object): #geen elif want anders gaat die alleen player doen bij twee botsingen die tegelijk zijn
                 bot.pos = previous_bot_pos
                 bot_rect.center = bot.pos
-             
-        #collision shield and player/bot
-        if shield:
-            if player.rect.colliderect(shield.rect):
-                player.has_shield = True
-                shield = None
-            elif bot.rect.colliderect(shield.rect):
-                bot.has_shield = True
-                shield = None
-     
+            
         #walls en bushes tekenen 
         for object in list_of_objects:
             if hasattr(object, "draw"):
                 object.draw()
-                
-        #shield tekenen: als er een shield is moet deze getekend worden
-        if shield:
-            shield.draw() 
             
-                        
         # levens en ammo tekenen
         Screen.player_hearts(heart_pos,player.health,playerheart_image)
         Screen.bot_hearts(previous_bot_pos,bot.health,botheart_image)
@@ -820,10 +845,9 @@ while running:
         player.angle = 0
         bullet_list_player.clear()
         bullet_list_bot.clear()
-        shield = None
+        shield_spawner.reset()
         player.has_shield = False
         bot.has_shield = False
-        next_shield_time = pygame.time.get_ticks() + random.randint(10000, 30000)
         
         #walls and bushes generaten
         list_of_objects.clear()
