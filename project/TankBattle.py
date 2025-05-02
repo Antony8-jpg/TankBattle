@@ -4,10 +4,10 @@ import random
 from pygame import mixer
 
 # TO DO:
-#bot movement: a-star op bepaalde momenten 
-#power ups
-#verschillende soorten kogels en interacties met de walls of bushes
-#meerdere bots met verschillende eigenschappen 
+# bot movement: random movement moet astar zijn ipv rechte lijn 
+# bot movement: naar powerup gaan (astar pathfinding)
+# special bullets laten spawnen
+# meerdere bots
 
 pygame.init()
 clock = pygame.time.Clock()
