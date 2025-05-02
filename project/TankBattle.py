@@ -2,7 +2,7 @@ import pygame
 import math
 import random
 from pygame import mixer
-import heapq # voor de grid
+#import heapq # voor de grid
 
 # TO DO:
 #bot movement: a-star op bepaalde momenten 
@@ -16,16 +16,22 @@ clock = pygame.time.Clock()
 current_time = pygame.time.get_ticks()        
 last_print_time = 0
 
-screen_length = 1100
-screen_height = 650
-player_size = [40,40]
-bot_size = [40,40]
-grid_size = 35
+class GameImage:
+    def __init__(self, name, size):
+        self.name = name
+        self.size = size 
+        self.image = self.load_scaled_image()
+        
+    def load_scaled_image(self):
+        unsized_image = pygame.image.load(self.name)
+        return pygame.transform.scale(unsized_image , self.size)
 
 # background
+screen_size = [1100, 650]
+screen_length = screen_size[0] #makkelijker om screen height en lenght verder te gebruiken
+screen_height = screen_size[1]
 screen = pygame.display.set_mode((screen_length,screen_height))
-unsized_background = pygame.image.load("plains.jpg")
-background = pygame.transform.scale(unsized_background,(screen_length,screen_height))
+background = GameImage("plains.jpg", screen_size).image
 pygame.display.set_caption("Tank Battle")
 icon = pygame.image.load("tank_icon.png")
 pygame.display.set_icon(icon)
@@ -36,12 +42,13 @@ hit_sound = mixer.Sound("hit_sound.ogg")
 hit_sound.set_volume(1.0)
                     
 # grid
+grid_size = 35
 grid_length = screen_length // grid_size
 grid_height = screen_height // grid_size
 
 #player
-unsized_player = pygame.image.load("new_tank_image.png")
-player_image = pygame.transform.scale(unsized_player,(player_size[0],player_size[1]))
+player_size = [40,40]
+player_image = GameImage("new_tank_image.png", player_size).image
 player_pos = pygame.math.Vector2(100, screen_height / 2)
 direction = pygame.math.Vector2(1,1)
 player_speed = 10
@@ -49,10 +56,9 @@ rotation_speed = 15
 angle = 0
 player_health = 5
 
-
 # bot 
-unsized_bot = pygame.image.load("enemytank_image.png")
-bot_image = pygame.transform.scale(unsized_bot,(bot_size[0],bot_size[1]))
+bot_size = [40,40]
+bot_image = GameImage("enemytank_image.png", bot_size).image
 bot_pos = pygame.math.Vector2(screen_length -100 , screen_height/2)
 bot_speed = 3
 bot_angle = 0
@@ -65,44 +71,38 @@ bullet_size = [10,25]
 bullet_speed = 20
 bullet_list_player = []
 bullet_list_bot = []
-unsized_bullet = pygame.image.load("bullet_image1.png")
-bullet_image = pygame.transform.scale(unsized_bullet, (bullet_size[0],bullet_size[1]))
+bullet_image = GameImage("bullet_image1.png", bullet_size).image
 bullet_cooldown = 2000
 ammo_pos = [10,70]
 max_ammo = 3
 
 #special bullet
-unsized_special_bullet = pygame.image.load("bullet_special.png")
-special_bullet_image = pygame.transform.scale(unsized_special_bullet, (bullet_size[0], bullet_size[1]))
+special_bullet_image = GameImage("bullet_special.png", bullet_size).image
 
 #wall
 wall_size = [35,35]
-unsized_wall = pygame.image.load("brick_wall.png")      
-wall_image = pygame.transform.scale(unsized_wall, (wall_size[0],wall_size[1]))
+wall_image = GameImage("brick_wall.png", wall_size).image
 wall_amount = 15
 
 #bush
 bush_size = [35,35]
-unsized_bush = pygame.image.load("bush.png")
-bush_image = pygame.transform.scale(unsized_bush, (bush_size[0],bush_size[1]))
+bush_image = GameImage("bush.png", bush_size).image
 bush_amount = 15
 
 #heart
 playerheart_size = [50,50]
 botheart_size = [15,15]
-unsized_heart = pygame.image.load("heart.png")
-playerheart_image = pygame.transform.scale(unsized_heart,(playerheart_size[0],playerheart_size[1]))
-botheart_image = pygame.transform.scale(unsized_heart,(botheart_size[0],botheart_size[1]))
+playerheart_image = GameImage("heart.png", playerheart_size).image
+botheart_image = GameImage("heart.png", botheart_size).image
 heart_pos = [10,10]
 
 #shield
 playershield_size = [50,50]
 botshield_size = [15,15]
 shield_size =  [35,35]
-unsized_shield = pygame.image.load("shield.png")
-playershield_image = pygame.transform.scale(unsized_shield,(playershield_size[0],playershield_size[1]))
-botshield_image = pygame.transform.scale(unsized_shield,(botshield_size[0],botshield_size[1]))
-shield_image = pygame.transform.scale(unsized_shield,(shield_size[0],shield_size[1]))
+playershield_image = GameImage("shield.png", playershield_size).image
+botshield_image = GameImage("shield.png", botshield_size).image
+shield_image = GameImage("shield.png", shield_size).image 
 next_shield_time = pygame.time.get_ticks() + random.randint(10000, 30000)
 shield = None #er kan tegelijk maar 1 shield in de game zijn, in het begin geen shield
 
@@ -387,6 +387,9 @@ class StationaryObject(Object):
         self.grid_x = int(self.pos[0]) // grid_size
         self.grid_y = int(self.pos[1]) // grid_size
 
+    def draw(self):
+        screen.blit(self.image, self.rect.topleft)
+
 class Shield(StationaryObject):
     def __init__(self, pos, image):
         super().__init__(pos)
@@ -394,7 +397,7 @@ class Shield(StationaryObject):
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
 
     def draw(self):
-        screen.blit(self.image, self.rect.topleft)
+        return super().draw()
 
 class Wall(StationaryObject):
     def __init__(self,pos, wallIMG):
@@ -403,7 +406,7 @@ class Wall(StationaryObject):
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
 
     def draw(self):
-        screen.blit(self.image, self.rect.topleft)
+       return super().draw()
 
 class Bush(StationaryObject):
     def __init__(self,pos, bushIMG):
@@ -412,11 +415,7 @@ class Bush(StationaryObject):
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
     
     def draw(self):
-        screen.blit(self.image, self.rect.topleft)
-
-class Figure(Object):
-    def __init__(self,pos):
-        super().__init__(pos)
+        return super().draw()
 
 class Screen():
     def __init__(self,pos):
@@ -638,16 +637,6 @@ class Grid:
 
         # If we exhaust all options without reaching the goal, return None
         return None
-
-class Rectangle(Figure):
-    def __init__(self, pos, color, width, height):
-        super().__init__(pos)
-        self.color = color
-        self.width = width
-        self.height = height
-        
-    def draw(self):
-        pygame.draw.rect(screen, self.color, (self.pos[0], self.pos[1], self.width, self.height))
 
 class GenerateObject:
     def __init__(self, amount, object, image):
