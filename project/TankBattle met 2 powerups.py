@@ -393,137 +393,84 @@ class StationaryObject(Object):
     def draw(self):
         screen.blit(self.image, self.rect.topleft)
 
-class Shield(StationaryObject):
+class PowerUp(StationaryObject):
     def __init__(self, pos, image):
         super().__init__(pos)
         self.image = image
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
 
+    def apply_effect(self, target):
+        pass
+
     def draw(self):
-        return super().draw()
-    
-class ShieldSpawner:
-    def __init__(self, shield_image, player, bot, available_positions, list_of_objects):
-        self.shield_image = shield_image
+        super().draw()
+        
+class Shield(PowerUp):
+    def apply_effect(self, target):
+        target.has_shield = True
+
+class SpecialBulletPickup(PowerUp):
+    def apply_effect(self, target):
+        target.has_special_bullet = True
+
+class PowerUpSpawner:
+    def __init__(self, powerup_class, image, player, bot, list_of_objects, available_positions, condition_func):
+        self.powerup_class = powerup_class
+        self.image = image
         self.player = player
         self.bot = bot
-        self.available_positions = available_positions
         self.list_of_objects = list_of_objects
-        self.shield = None
-        self.next_shield_time = 0
+        self.available_positions = available_positions
+        self.condition_func = condition_func  #dit is een functie die nodig is om voorwaarden te checken, maar die verschillend is voor elke powerup bv. not player.has_shield
+        self.powerup = None
+        self.next_spawn_time = 0
         self.timer_active = False
 
     def update(self):
         current_time = pygame.time.get_ticks()
 
-        #timer wordt gestart 
-        if not self.timer_active and self.shield is None and not self.player.has_shield and not self.bot.has_shield:
-            self.next_shield_time = current_time + random.randint(10000, 30000)
+        if not self.timer_active and self.powerup is None and self.condition_func(self.player):
+            self.next_spawn_time = current_time + random.randint(10000, 30000)
             self.timer_active = True
 
-        #shield wordt gespawnd als de timer voorbij is en er geen shield in de game is
-        if current_time >= self.next_shield_time and self.shield is None and not self.player.has_shield and not self.bot.has_shield:
-            random.shuffle(self.available_positions)
+        if current_time >= self.next_spawn_time and self.powerup is None and self.condition_func(self.player):
+            random.shuffle(self.available_positions) #lijst random shuffelen
             for (x, y) in self.available_positions:
                 new_pos = pygame.math.Vector2(x, y)
-
                 
-                shield_safe_to_spawn = True
-                for obj in self.list_of_objects: #extra controleren of shield zeker niet op een wall of bush staat
+                powerup_safe_to_spawn = True
+                for obj in self.list_of_objects + active_powerups: #extra controleren of powerup op een veilige locatie wordt gespawnd
                     if obj.rect.collidepoint(x, y):
-                        shield_safe_to_spawn = False
-                        break
-                    
-                for obj in active_powerups: #check of de powerup niet op de plaats van een andere powerup wordt gespawnd
-                    if obj and obj.rect.collidepoint(x, y):
-                        shield_safe_to_spawn = False
-
-                if new_pos.distance_to(self.player.pos) > 100 and new_pos.distance_to(self.bot.pos) > 100 and shield_safe_to_spawn:
-                    self.shield = Shield((x, y), self.shield_image)
-                    active_powerups.append(self.shield)
-                    self.timer_active = False
-                    break
-
-        #collision met player/bot en shield
-        if self.shield:
-            if self.player.rect.colliderect(self.shield.rect):
-                self.player.has_shield = True
-                active_powerups.remove(self.shield)
-                self.shield = None
-            elif self.bot.rect.colliderect(self.shield.rect):
-                self.bot.has_shield = True
-                active_powerups.remove(self.shield)
-                self.shield = None
-
-    def draw(self):
-        if self.shield:
-            self.shield.draw()
-
-    def reset(self):
-        self.shield = None
-        self.timer_active = False
-        self.next_shield_time = 0
-
-class SpecialBulletPickup(StationaryObject):
-    def __init__(self, pos, image):
-        super().__init__(pos)
-        self.image = image
-        self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
-
-    def draw(self):
-        return super().draw()
-    
-class SpecialBulletSpawner:
-    def __init__(self, pickup_image, player, available_positions, list_of_objects):
-        self.pickup_image = pickup_image
-        self.player = player
-        self.available_positions = available_positions
-        self.list_of_objects = list_of_objects
-        self.pickup = None
-        self.next_pickup_time = 0
-        self.timer_active = False
-
-    def update(self):
-        current_time = pygame.time.get_ticks()
-
-        if not self.timer_active and self.pickup is None and not self.player.has_special_bullet:
-            self.next_pickup_time = current_time + random.randint(10000, 30000)
-            self.timer_active = True
-
-        if current_time >= self.next_pickup_time and self.pickup is None and not self.player.has_special_bullet:
-            random.shuffle(self.available_positions)
-            for (x, y) in self.available_positions:
-                new_pos = pygame.math.Vector2(x, y)
-
-                specialbullet_safe_to_spawn = True
-                for obj in self.list_of_objects: #extra controleren of specialbullet zeker niet op een wall of bush staat
-                    if obj.rect.collidepoint(x, y):
-                        specialbullet_safe_to_spawn = False
+                        powerup_safe_to_spawn = False
                         break
                 
-                for obj in active_powerups: #check of de powerup niet op de plaats van een andere powerup wordt gespawnd
-                    if obj and obj.rect.collidepoint(x, y):
-                        specialbullet_safe_to_spawn = False
-                        
-                if new_pos.distance_to(self.player.pos) > 100 and specialbullet_safe_to_spawn:
-                    self.pickup = SpecialBulletPickup((x, y), self.pickup_image)
-                    active_powerups.append(self.pickup)
-                    active_powerups.remove(self.pickup)
+                if new_pos.distance_to(self.player.pos) > 100 and powerup_safe_to_spawn:
+                    self.powerup = self.powerup_class((x, y), self.image)
+                    active_powerups.append(self.powerup)
                     self.timer_active = False
                     break
-
-        if self.pickup and self.player.rect.colliderect(self.pickup.rect):
-            self.player.has_special_bullet = True
-            self.pickup = None
+        
+        #collision met player
+        if self.powerup and self.player.rect.colliderect(self.powerup.rect):
+            self.powerup.apply_effect(self.player)
+            active_powerups.remove(self.powerup)
+            self.powerup = None
+            
+        #collision met bot (enkel voor shield)
+        if self.powerup and isinstance(self.powerup, Shield) and self.bot.rect.colliderect(self.powerup.rect):
+            self.powerup.apply_effect(self.bot)
+            active_powerups.remove(self.powerup)
+            self.powerup = None
+            
 
     def draw(self):
-        if self.pickup:
-            self.pickup.draw()
+        if self.powerup:
+            self.powerup.draw()
 
     def reset(self):
-        self.pickup = None
+        self.powerup = None
         self.timer_active = False
-        self.next_pickup_time = 0
+        self.next_spawn_time = 0
 
 class Wall(StationaryObject):
     def __init__(self,pos, wallIMG):
@@ -543,7 +490,7 @@ class Bush(StationaryObject):
     def draw(self):
         return super().draw()
 
-class Screen():
+class Screen:
     def __init__(self,pos):
         self.pos = pos
     
@@ -804,8 +751,8 @@ bushes = GenerateObject(amount= bush_amount , object= Bush, image= bush_image)
 bushes.generate()
 
 #shieldspawner en specialbulletspawner aanmaken
-shield_spawner = ShieldSpawner(shield_image, player, bot, available_positions, list_of_objects)
-special_bullet_spawner = SpecialBulletSpawner(special_bullet_image,player, available_positions, list_of_objects)
+shield_spawner = PowerUpSpawner(Shield, shield_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.has_shield and not bot.has_shield)
+special_bullet_spawner = PowerUpSpawner(SpecialBulletPickup, special_bullet_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.has_special_bullet)
 
 #game state op start zetten en welk lettertype tekst
 game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost"
@@ -858,8 +805,8 @@ while running:
         
         #powerups: shield and special bullet
         shield_spawner.update()
-        shield_spawner.draw()
         special_bullet_spawner.update()
+        shield_spawner.draw()
         special_bullet_spawner.draw()
                 
         #managen bullets and collsion bullets of player and bot
@@ -918,9 +865,9 @@ while running:
         bullet_list_player.clear()
         bullet_list_bot.clear()
         shield_spawner.reset()
+        special_bullet_spawner.reset()
         player.has_shield = False
         bot.has_shield = False
-        special_bullet_spawner.reset()
         active_powerups.clear()
         
         #walls and bushes generaten
