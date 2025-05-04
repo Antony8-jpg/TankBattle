@@ -93,17 +93,18 @@ playerheart_image = GameImage("heart.png", playerheart_size).image
 botheart_image = GameImage("heart.png", botheart_size).image
 heart_pos = [10,10]
 
-#shield
+#powerups 
 active_powerups = [] #lijst die gebruikt wordt zodat powerups niet op dezelfde plaats kunnen spawnen
 playershield_size = [50,50]
 botshield_size = [15,15]
-shield_size =  [35,35]
+powerup_size =  [35,35]
 playershield_image = GameImage("shield.png", playershield_size).image
 botshield_image = GameImage("shield.png", botshield_size).image
-shield_image = GameImage("shield.png", shield_size).image 
+shield_image = GameImage("shield.png", powerup_size).image 
 shield_timer_active = False
 next_shield_time = 0  #wordt later geüpdated
 shield = None #er kan tegelijk maar 1 shield in de game zijn, in het begin geen shield
+speed_boost_image = GameImage("speed_boost.png", powerup_size).image
 
 #classes
 class Object:
@@ -173,7 +174,6 @@ class Player(MovingObject):
     def __init__(self,pos,direction,player_speed,rotation_speed,angle,playerImg):
         super().__init__(pos)
         self.direction = direction
-        self.speed = player_speed
         self.rotation_speed = rotation_speed
         self.angle = angle
         self.image = playerImg
@@ -184,13 +184,22 @@ class Player(MovingObject):
         self.health = 5
         self.has_special_bullet = True
         self.has_shield = False
-        
+        self.speed_boost_active = False
+        self.speed_boost_start_time = 0
+        self.base_speed = player_speed
+
     def player_movement(self):
+        #speed updaten en powerup checken
+        if self.speed_boost_active and pygame.time.get_ticks() - self.speed_boost_start_time > 10000:
+            self.speed_boost_active = False
+        
+        actual_speed = self.base_speed * (1.5 if self.speed_boost_active else 1)
+        
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP]:
-            self.speed = player_speed
+            self.speed = actual_speed
         elif keys[pygame.K_DOWN]:
-            self.speed = -player_speed
+            self.speed = -actual_speed
         else:
             self.speed = 0  
         if keys[pygame.K_LEFT]:
@@ -452,6 +461,14 @@ class SpecialBulletPickup(PowerUp):
     def apply_effect(self, target):
         target.has_special_bullet = True
 
+class SpeedBoost(PowerUp):
+    def __init__(self, pos, image):
+        super().__init__(pos, image)
+
+    def apply_effect(self, player):
+        player.speed_boost_active = True
+        player.speed_boost_start_time = pygame.time.get_ticks()
+   
 class PowerUpSpawner:
     def __init__(self, powerup_class, image, player, bot, list_of_objects, available_positions, condition_func):
         self.powerup_class = powerup_class
@@ -465,13 +482,16 @@ class PowerUpSpawner:
         self.next_spawn_time = 0
         self.timer_active = False
 
+
     def update(self):
         current_time = pygame.time.get_ticks()
 
-        if not self.timer_active and self.powerup is None and self.condition_func(self.player):
+        #tijdsinterval voor het spawnen van de powerup starten
+        if not self.timer_active and self.powerup is None and self.condition_func(self.player): 
             self.next_spawn_time = current_time + random.randint(10000, 30000)
             self.timer_active = True
 
+        #positie voor de powerrup zoeken
         if current_time >= self.next_spawn_time and self.powerup is None and self.condition_func(self.player):
             random.shuffle(self.available_positions) #lijst random shuffelen
             for (x, y) in self.available_positions:
@@ -483,7 +503,7 @@ class PowerUpSpawner:
                         powerup_safe_to_spawn = False
                         break
                 
-                if new_pos.distance_to(self.player.pos) > 100 and powerup_safe_to_spawn:
+                if new_pos.distance_to(self.player.pos) > 200 and new_pos.distance_to(self.bot.pos) > 200 and powerup_safe_to_spawn:
                     self.powerup = self.powerup_class((x, y), self.image)
                     active_powerups.append(self.powerup)
                     self.timer_active = False
@@ -500,7 +520,7 @@ class PowerUpSpawner:
             self.powerup.apply_effect(self.bot)
             active_powerups.remove(self.powerup)
             self.powerup = None
-            
+              
 
     def draw(self):
         if self.powerup:
@@ -583,6 +603,10 @@ class Screen():
             bot_heart_x = bot.pos.x - bot_size[0]/2 + bot.health * spacing
             bot_heart_y = bot.pos.y - bot_size[1]
             screen.blit(botshield_image, (bot_heart_x + 5, bot_heart_y))
+
+    def draw_speed_boost(player, position = (5, 155)):
+        if player.speed_boost_active:
+            screen.blit(speed_boost_image, position)
 
     def draw_end_screen(message):
         text = font.render(message, True, (255, 255, 255))
@@ -760,9 +784,10 @@ walls.generate()
 bushes = GenerateObject(amount= bush_amount , object= Bush, image= bush_image)
 bushes.generate()
 
-#shieldspawner en specialbulletspawner aanmaken
+#powerups aanmaken
 shield_spawner = PowerUpSpawner(Shield, shield_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.has_shield and not bot.has_shield)
 special_bullet_spawner = PowerUpSpawner(SpecialBulletPickup, special_bullet_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.has_special_bullet)
+speedboost_spawner = PowerUpSpawner(SpeedBoost, speed_boost_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.speed_boost_active)
 
 #game state op start zetten en welk lettertype tekst
 game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost"
@@ -818,6 +843,8 @@ while running:
         special_bullet_spawner.update()
         shield_spawner.draw()
         special_bullet_spawner.draw()
+        speedboost_spawner.update()
+        speedboost_spawner.draw()
                
         #managen bullets and collsion bullets of player and bot
         player.manage(bullet_list= bullet_list_player, yourobject = "player", other_object = bot)
@@ -845,6 +872,7 @@ while running:
         Screen.draw_special_bullet_ammo(player)
         Screen.draw_reload_timer(player)
         Screen.draw_shield_indicator(player, bot)
+        Screen.draw_speed_boost(player)
         player_rect = MovingObject.blit_rotated_image(screen, player.image, player.pos, player.angle, player_size)
         bot_rect = MovingObject.blit_rotated_image(screen, bot.image, bot.pos, bot.angle, bot_size)
 
@@ -872,8 +900,12 @@ while running:
         bullet_list_player.clear()
         bullet_list_bot.clear()
         shield_spawner.reset()
+        special_bullet_spawner.reset()
         player.has_shield = False
         bot.has_shield = False
+        active_powerups.clear()
+        player.speed_boost_active = False
+        player.speed_boost_start_time = 0
         
         #walls and bushes generaten
         list_of_objects.clear()
