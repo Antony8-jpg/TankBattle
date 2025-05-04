@@ -28,7 +28,8 @@ screen_size = [1100, 650]
 screen_length = screen_size[0] #makkelijker om screen height en lenght verder te gebruiken
 screen_height = screen_size[1]
 screen = pygame.display.set_mode((screen_length,screen_height))
-background = GameImage("plains.jpg", screen_size).image
+game_background = GameImage("plains.jpg", screen_size).image
+main_background = GameImage("main_background.jpg", screen_size).image
 pygame.display.set_caption("Tank Battle")
 icon = pygame.image.load("tank_icon.png")
 pygame.display.set_icon(icon)
@@ -798,7 +799,10 @@ small_font = pygame.font.SysFont(None, 50)
 running = True
 while running:
     clock.tick(20)
-    screen.blit(background,(0,0))
+    if game_state == "running":    
+        screen.blit(game_background,(0,0))
+    else:
+        screen.blit(main_background, (0,0))
     keys = pygame.key.get_pressed()
     
     for event in pygame.event.get():
