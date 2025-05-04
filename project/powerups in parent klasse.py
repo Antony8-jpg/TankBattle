@@ -31,7 +31,8 @@ screen_size = [1100, 650]
 screen_length = screen_size[0] #makkelijker om screen height en lenght verder te gebruiken
 screen_height = screen_size[1]
 screen = pygame.display.set_mode((screen_length,screen_height))
-background = GameImage("plains.jpg", screen_size).image
+game_background = GameImage("plains.jpg", screen_size).image
+main_background = GameImage("main_background.jpg", screen_size).image
 pygame.display.set_caption("Tank Battle")
 icon = pygame.image.load("tank_icon.png")
 pygame.display.set_icon(icon)
@@ -108,6 +109,7 @@ shield_timer_active = False
 next_shield_time = 0  #wordt later geüpdated
 shield = None #er kan tegelijk maar 1 shield in de game zijn, in het begin geen shield
 speed_boost_image = GameImage("speed_boost.png", powerup_size).image
+speed_boost_duration = 10000 #10 s
 
 #classes
 class Object:
@@ -194,7 +196,7 @@ class Player(MovingObject):
         
     def player_movement(self):
         #speed updaten en powerup checken
-        if self.speed_boost_active and pygame.time.get_ticks() - self.speed_boost_start_time > 10000:
+        if self.speed_boost_active and pygame.time.get_ticks() - self.speed_boost_start_time > speed_boost_duration:
             self.speed_boost_active = False
         
         actual_speed = self.base_speed * (1.5 if self.speed_boost_active else 1)
@@ -535,7 +537,7 @@ class Screen:
         for i in range(player_ammo):
             screen.blit(bullet_image,(ammo_pos[0]+i*spacing,ammo_pos[1]))
             
-    def draw_special_bullet_ammo(player, position=(10, 120)):
+    def draw_special_bullet_ammo(player, position=(10, 130)):
         if player.has_special_bullet:
             screen.blit(special_bullet_image, position)
     
@@ -565,9 +567,17 @@ class Screen:
             bot_heart_y = bot.pos.y - bot_size[1]
             screen.blit(botshield_image, (bot_heart_x + 5, bot_heart_y))
             
-    def draw_speed_boost(player, position = (5, 155)):
+    def draw_speed_boost(player, position = (5, 165)):
         if player.speed_boost_active:
             screen.blit(speed_boost_image, position)
+            current_time = pygame.time.get_ticks()
+            time_since_start_boost = current_time - player.speed_boost_start_time
+            duration = speed_boost_duration
+            progress = max(0, min(1.0, 1 - time_since_start_boost / duration))  #balk gaat van 1 tot 0, max en min is zodat het altijd tussen 0 en 1 zit
+            bar_width = 50
+            bar_height = 10
+            pygame.draw.rect(screen, (50, 50, 50), (5, 210, bar_width, bar_height)) #lege bar
+            pygame.draw.rect(screen, (0, 150, 255), (5, 210, progress * bar_width, bar_height)) #progress bar
 
     def draw_end_screen(message):
         text = font.render(message, True, (255, 255, 255))
@@ -788,7 +798,11 @@ small_font = pygame.font.SysFont(None, 50)
 running = True
 while running:
     clock.tick(20)
-    screen.blit(background,(0,0))
+    if game_state == "running":    
+        screen.blit(game_background,(0,0))
+    else:
+        screen.blit(main_background, (0,0))
+        
     keys = pygame.key.get_pressed()
     
     for event in pygame.event.get():
