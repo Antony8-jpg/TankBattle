@@ -106,6 +106,7 @@ shield_timer_active = False
 next_shield_time = 0  #wordt later geüpdated
 shield = None #er kan tegelijk maar 1 shield in de game zijn, in het begin geen shield
 speed_boost_image = GameImage("speed_boost.png", powerup_size).image
+speed_boost_duration = 10000 #10 s
 
 #classes
 class Object:
@@ -566,8 +567,8 @@ class Screen():
     def available_positions():
         available_positions = [
              (x, y)
-             for x in range(wall_size[0]//2, screen_length - wall_size[0]//2, wall_size[0])
-             for y in range(wall_size[1]//2, screen_height - wall_size[1]//2, wall_size[1])
+             for x in range(75, screen_length - 50, wall_size[0])
+             for y in range(75, screen_height - 50, wall_size[1])
          ]
         return available_positions
     
@@ -575,7 +576,7 @@ class Screen():
         for i in range(player_ammo):
             screen.blit(bullet_image,(ammo_pos[0]+i*spacing,ammo_pos[1]))
             
-    def draw_special_bullet_ammo(player, position=(10, 120)):
+    def draw_special_bullet_ammo(player, position=(10, 130)):
         if player.has_special_bullet:
             screen.blit(special_bullet_image, position)
     
@@ -605,9 +606,17 @@ class Screen():
             bot_heart_y = bot.pos.y - bot_size[1]
             screen.blit(botshield_image, (bot_heart_x + 5, bot_heart_y))
 
-    def draw_speed_boost(player, position = (5, 155)):
+    def draw_speed_boost(player, position = (5, 165)):
         if player.speed_boost_active:
             screen.blit(speed_boost_image, position)
+            current_time = pygame.time.get_ticks()
+            time_since_start_boost = current_time - player.speed_boost_start_time
+            duration = speed_boost_duration
+            progress = max(0, min(1.0, 1 - time_since_start_boost / duration))  #balk gaat van 1 tot 0, max en min is zodat het altijd tussen 0 en 1 zit
+            bar_width = 50
+            bar_height = 10
+            pygame.draw.rect(screen, (50, 50, 50), (5, 210, bar_width, bar_height)) #lege bar
+            pygame.draw.rect(screen, (0, 150, 255), (5, 210, progress * bar_width, bar_height)) #progress bar
 
     def draw_end_screen(message):
         text = font.render(message, True, (255, 255, 255))
