@@ -4,10 +4,9 @@ import random
 from pygame import mixer
 
 # TO DO:
-# bot movement: random movement moet astar zijn ipv rechte lijn 
-# bot movement: naar powerup gaan (astar pathfinding)
-# special bullets laten spawnen
+# startscreen met knoppen
 # meerdere bots
+# in meerdere files zetten
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -95,6 +94,7 @@ botheart_image = GameImage("heart.png", botheart_size).image
 heart_pos = [10,10]
 
 #shield
+active_powerups = [] #lijst die gebruikt wordt zodat powerups niet op dezelfde plaats kunnen spawnen
 playershield_size = [50,50]
 botshield_size = [15,15]
 shield_size =  [35,35]
@@ -244,83 +244,141 @@ class Player(MovingObject):
         return grid_x,grid_y
      
 class Bot(MovingObject):
-    def __init__(self, pos,bot_image,bot_speed,bot_angle):
+    def __init__(self, pos,image,speed,angle):
         super().__init__(pos)
-        self.image = bot_image
+        self.image = image
         self.rect = self.image.get_rect(center = self.pos)
-        self.speed = bot_speed
-        self.angle = bot_angle
+        self.speed = speed
+        self.angle = angle
         self.last_shot_time = 0
         self.health = 5
         self.has_shield = False
-
-        #voor bot movement
+        # movement state
         self.state = "follow"
-        self.state_starttime = pygame.time.get_ticks()
-        self.state_duration = random.randint(2000, 4000)
         self.direction = pygame.math.Vector2(0, 1)
         self.path = []
         self.goal = None
+        # timers
+        self.last_shot_time = 0
         self.last_path_update_time = 0
+        self.last_successful_path_time = pygame.time.get_ticks()
+        self.state_starttime = pygame.time.get_ticks()
+        self.state_duration = random.randint(2000, 4000)
+        # random goal
+        self.random_goal_x = random.randint(0, screen_length)
+        self.random_goal_y = random.randint(0, screen_height)
 
-      
-        self.last_move_time = pygame.time.get_ticks()
-        self.last_position_check = self.pos.copy()
-        self.stuck_duration = 1000  # milliseconds
-        
     def bot_movement(self):
         current_time = pygame.time.get_ticks()
-        self.start = Grid.screen_to_grid(self.pos)
-        
-        # switchen tussen random en follow movement
-        # random --> beweegt naar een random punt door astar
-        # follow --> beweegt naar de player door astar
+        self.start = Grid.screen_to_grid(self.pos) # startpositie van de bot
 
-        if current_time - self.state_starttime > self.state_duration:
-            self.state_duration = random.randint(2000, 4000)
+        # als er een shield is gaat de bot ervoor (1 kans op 3)
+        shield_targeted = False
+        if shield_spawner.powerup and self.state != "shield": #shield state toevoegen om niet 2 shields te hebben
+            if random.randint(1, 3) == 1:
+                self.goal = Grid.screen_to_grid(pygame.math.Vector2(shield_spawner.powerup.rect.center))
+                self.state = "shield" 
+                self.state_starttime = current_time 
+                self.state_duration = random.randint(3000, 5000) # gaat naar de shield enkel voor 4 seconden (om te voorkomen dat hij geblokkeerd is als hij zijn pad niet vindt)
+                print("going for shield")
+                shield_targeted = True
+
+        # state update
+        if self.state != "shield" and current_time - self.state_starttime > self.state_duration:
             self.state_starttime = current_time
-            if self.pos.distance_to(player.pos) < 400:
+            self.state_duration = random.randint(2000, 4000)
+
+            if self.pos.distance_to(player.pos) < 250: # volgt de player als die dichtbij is
                 self.state = "follow"
             else:
-                self.state = random.choices(["random", "follow"], weights=[1, 3])[0]
+                self.state = random.choices(["random", "follow"], weights=[3, 1])[0] # 75% kans om random , [0] om de string terug te geven ipv de lijst
+                if self.state == "random": # bij random movement een random goal maken
+                    self.random_goal_x = random.randint(0, screen_length)
+                    self.random_goal_y = random.randint(0, screen_height)
+            print(self.state) # om te zien wat er gebeurt
 
-            if self.state == "random":
-                goal_x = random.randint(0,screen_length)
-                goal_y = random.randint(0,screen_height)
-                self.random_goal_vector = pygame.math.Vector2(goal_x,goal_y)
-                self.goal = Grid.screen_to_grid(self.random_goal_vector)
-        
+        # goals aanmaken/veranderen
         if self.state == "follow":
             self.goal = Grid.screen_to_grid(player.pos)
         elif self.state == "random":
+            self.random_goal_vector = pygame.math.Vector2(self.random_goal_x, self.random_goal_y)
             self.goal = Grid.screen_to_grid(self.random_goal_vector)
 
-        if current_time - self.last_path_update_time > 500 or not self.path:
-                self.grid = Grid.build_grid() 
-                self.path = Grid.astar(self.start, self.goal, self.grid)
-                self.last_path_update_time = current_time
-                
+        # pad updaten
+        if current_time - self.last_path_update_time > 500: # elke 0.5 seconden om niet te laggen
+            self.grid = Grid.build_grid() #grid nodig voor astar
+            new_path = Grid.astar(self.start, self.goal, self.grid) #astar toepassen
+            self.last_path_update_time = current_time
 
+            if new_path:
+                self.path = new_path
+                self.last_successful_path_time = current_time
+            elif current_time - self.last_successful_path_time > 1000:
+                # als op moment van aanmaak van nieuw pad er geen pad kan worden aangemaakt op de eindpositie van de player dan zoekt de bot een open grid dichtbij -> alternative goal
+                alternative_goal = self.find_closest_accessible_to_player()
+                if alternative_goal and alternative_goal != self.goal:
+                    alternative_path = Grid.astar(self.start, alternative_goal, self.grid)
+                    if alternative_path: # als astar werkt
+                        self.path = alternative_path
+                        self.goal = alternative_goal
+                        self.state = "follow"
+                        self.last_successful_path_time = current_time
+                        print("alternative path")
+
+        # pad volgen
         if self.path:
             next_step = Grid.grid_to_screen(self.path[0])
             if self.pos.distance_to(next_step) < 5:
-                self.path.pop(0)
-            if self.path:
+                self.path.pop(0) # haal het eerste element eruit
+                if len(self.path) == 0:
+                    self.direction = pygame.math.Vector2(0, 0)
+
+                    # als hij bij het einde geraakt van random/shield gaat hij over naar follow
+                    if self.state in ["random", "shield"]:
+                        self.state = "follow"
+                        self.state_starttime = current_time
+                        self.goal = Grid.screen_to_grid(player.pos)
+                        self.path = Grid.astar(self.start, self.goal, self.grid)
+                        if self.path:
+                            self.last_successful_path_time = current_time
+                    return
                 next_step = Grid.grid_to_screen(self.path[0])
-                self.direction = (next_step - self.pos).normalize()
-                self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
-            
+
+            self.direction = (next_step - self.pos).normalize()
+            self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
+
+            # teken het pad voor visualisatie/debugging
             for grid in self.path:
-                    # grids tekenen
-                    x = grid[0] * grid_size
-                    y = grid[1] * grid_size
-                    pygame.draw.rect(screen, (255, 255, 255), (x, y, grid_size, grid_size), 2)
+                x = grid[0] * grid_size
+                y = grid[1] * grid_size
+                pygame.draw.rect(screen, (255, 255, 255), (x, y, grid_size, grid_size), 2)
+        else:
+            self.direction = pygame.math.Vector2(0, 0)
 
-
+        # beweeg de bot position
         self.pos += self.speed * self.direction
 
 
-    def bot_update(self,lengte,hoogte):
+    def find_closest_accessible_to_player(self): #alternatieve weg zoeken als de player dichtbij een obstacle is
+        target_grid = Grid.screen_to_grid(player.pos)
+        grid = self.grid
+
+        search_radius = 1
+        max_radius = max(grid_length, grid_height)
+
+        while search_radius < max_radius:
+            for dx in range(-search_radius, search_radius + 1):
+                for dy in range(-search_radius, search_radius + 1):
+                    x = target_grid[0] + dx
+                    y = target_grid[1] + dy
+                    # zoekt een open plek rond de player
+                    if 0 <= x < grid_length and 0 <= y < grid_height: 
+                        if Grid.clear_area(grid, x, y, clearance=1):
+                            return (x, y)
+            search_radius += 1 # niet gevond -> straal groter maken
+        return None  
+
+    def bot_update(self,lengte,hoogte): # image van de bot updaten
         self.pos.x = max(0, min(self.pos.x, lengte))
         self.pos.y = max(0, min(self.pos.y, hoogte))
 
@@ -330,7 +388,7 @@ class Bot(MovingObject):
     
     def shoot(self):
         current_time = pygame.time.get_ticks()
-        if current_time - self.last_shot_time > bot_shooting_speed:
+        if current_time - self.last_shot_time > bot_shooting_speed and self.direction.length_squared() != 0: # zodat hij niet schiet als die stil staat-> kan voor bug zorgen
             self.last_shot_time = current_time
             self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
             bullet = Bullet(self.pos.copy(), self.direction.copy(), bullet_speed, self.angle, bullet_image)
@@ -374,69 +432,84 @@ class StationaryObject(Object):
     def draw(self):
         screen.blit(self.image, self.rect.topleft)
 
-class Shield(StationaryObject):
+class PowerUp(StationaryObject):
     def __init__(self, pos, image):
         super().__init__(pos)
         self.image = image
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
 
+    def apply_effect(self, target):
+        pass
+
     def draw(self):
-        return super().draw()
-    
-class ShieldSpawner:
-    def __init__(self, shield_image, player, bot, available_positions, list_of_objects):
-        self.shield_image = shield_image
+        super().draw()
+
+class Shield(PowerUp):
+    def apply_effect(self, target):
+        target.has_shield = True
+
+class SpecialBulletPickup(PowerUp):
+    def apply_effect(self, target):
+        target.has_special_bullet = True
+
+class PowerUpSpawner:
+    def __init__(self, powerup_class, image, player, bot, list_of_objects, available_positions, condition_func):
+        self.powerup_class = powerup_class
+        self.image = image
         self.player = player
         self.bot = bot
-        self.available_positions = available_positions
         self.list_of_objects = list_of_objects
-        self.shield = None
-        self.next_shield_time = 0
+        self.available_positions = available_positions
+        self.condition_func = condition_func  #dit is een functie die nodig is om voorwaarden te checken, maar die verschillend is voor elke powerup bv. not player.has_shield
+        self.powerup = None
+        self.next_spawn_time = 0
         self.timer_active = False
 
     def update(self):
         current_time = pygame.time.get_ticks()
 
-        #timer wordt gestart 
-        if not self.timer_active and self.shield is None and not self.player.has_shield and not self.bot.has_shield:
-            self.next_shield_time = current_time + random.randint(10000, 30000)
+        if not self.timer_active and self.powerup is None and self.condition_func(self.player):
+            self.next_spawn_time = current_time + random.randint(10000, 30000)
             self.timer_active = True
 
-        #shield wordt gespawnd als de timer voorbij is en er geen shield in de game is
-        if current_time >= self.next_shield_time and self.shield is None and not self.player.has_shield and not self.bot.has_shield:
-            random.shuffle(self.available_positions)
+        if current_time >= self.next_spawn_time and self.powerup is None and self.condition_func(self.player):
+            random.shuffle(self.available_positions) #lijst random shuffelen
             for (x, y) in self.available_positions:
                 new_pos = pygame.math.Vector2(x, y)
-
                 
-                shield_safe_to_spawn = True
-                for obj in list_of_objects: #extra controleren of shield zeker niet op een wall of bush staat
+                powerup_safe_to_spawn = True
+                for obj in self.list_of_objects + active_powerups: #extra controleren of powerup op een veilige locatie wordt gespawnd
                     if obj.rect.collidepoint(x, y):
-                        shield_safe_to_spawn = False
+                        powerup_safe_to_spawn = False
                         break
-
-                if new_pos.distance_to(self.player.pos) > 100 and new_pos.distance_to(self.bot.pos) > 100 and shield_safe_to_spawn:
-                    self.shield = Shield((x, y), self.shield_image)
+                
+                if new_pos.distance_to(self.player.pos) > 100 and powerup_safe_to_spawn:
+                    self.powerup = self.powerup_class((x, y), self.image)
+                    active_powerups.append(self.powerup)
                     self.timer_active = False
                     break
-
-        #collision met player/bot en shield
-        if self.shield:
-            if self.player.rect.colliderect(self.shield.rect):
-                self.player.has_shield = True
-                self.shield = None
-            elif self.bot.rect.colliderect(self.shield.rect):
-                self.bot.has_shield = True
-                self.shield = None
+        
+        #collision met player
+        if self.powerup and self.player.rect.colliderect(self.powerup.rect):
+            self.powerup.apply_effect(self.player)
+            active_powerups.remove(self.powerup)
+            self.powerup = None
+            
+        #collision met bot (enkel voor shield)
+        if self.powerup and isinstance(self.powerup, Shield) and self.bot.rect.colliderect(self.powerup.rect):
+            self.powerup.apply_effect(self.bot)
+            active_powerups.remove(self.powerup)
+            self.powerup = None
+            
 
     def draw(self):
-        if self.shield:
-            self.shield.draw()
+        if self.powerup:
+            self.powerup.draw()
 
     def reset(self):
-        self.shield = None
+        self.powerup = None
         self.timer_active = False
-        self.next_shield_time = 0
+        self.next_spawn_time = 0
 
 class Wall(StationaryObject):
     def __init__(self,pos, wallIMG):
@@ -543,40 +616,6 @@ class Screen():
 
 class Grid:
     
-    def line_grids(start_pos, end_pos, grid_size):# debug functie voor beweging bot: verbindingslijn tussen bot en player en grids inkleuren die de lijn snijdt
-        grids = []
-        list_of_obstacles = []
-        current_time = pygame.time.get_ticks()
-        global last_print_time
-        
-        # zet alle grids waardoor de verbindingslijn gaat in een lijst
-        stappen = 100
-        for i in range(stappen + 1):
-            t = i / stappen
-            x = start_pos.x + (end_pos.x - start_pos.x) * t
-            y = start_pos.y + (end_pos.y - start_pos.y) * t
-            grid_x = int(x) // grid_size
-            grid_y = int(y) // grid_size
-            grid = (grid_x, grid_y)
-            if grid not in grids: # om geen dubbele te hebben
-                grids.append(grid)
-        # teken de grids die op de verbindingslijn staan
-        for grid in grids:
-            # grids tekenen
-            x = grid[0] * grid_size
-            y = grid[1] * grid_size
-            pygame.draw.rect(screen, (255, 255, 255), (x, y, grid_size, grid_size), 2)
-            # obstacles bijhouden (obstacles -> objecten die in de weg staan)
-            for object in list_of_objects:
-                if (grid[0],grid[1]) == (object.grid_x,object.grid_y):
-                    list_of_obstacles.append([object.grid_x,object.grid_y])
-        
-        # timer om te printen anders is het veel
-        if current_time - last_print_time > 1000:
-            print(list_of_obstacles)
-            last_print_time = current_time
-        return
-
     def screen_to_grid(pos): 
         return (int(pos.x) // grid_size, int(pos.y) // grid_size)
 
@@ -598,7 +637,7 @@ class Grid:
     def heuristic(a, b): # geeft een waarde (f_score) voor de afstand tot het doel -> van chatgpt
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-    def is_area_clear(grid, x, y, clearance):  # om een vrije 3x3 gebied te vinden zodat de bot zeker door kan gaan (zou kunnen botsen tegen zijkant als 1x1) -> aangepaste versie van chatgpt
+    def clear_area(grid, x, y, clearance):  # om een vrije 3x3 gebied te vinden zodat de bot zeker door kan gaan (zou kunnen botsen tegen zijkant als 1x1)
         grid_width = len(grid)
         grid_height = len(grid[0])
         
@@ -621,10 +660,10 @@ class Grid:
         # alle andere grids zijn dan vrij -> True
         return True
 
-    def astar(start_cell, goal_cell, grid): # code van chatgpt
+    def astar(start_cell, goal_cell, grid): # code van chatgpt, pathfinding langs vrije pad
         from heapq import heappush, heappop
 
-        # priority queue van estimated_total_cost, cel
+        # priority queue van estimated_total_cost
         open_cells = []
         heappush(open_cells, (0, start_cell))
 
@@ -662,7 +701,7 @@ class Grid:
                     continue
 
                 # skip als de cel ernaast niet "walkable" is
-                is_walkable = Grid.is_area_clear(grid, neighbor_x, neighbor_y, clearance=1)
+                is_walkable = Grid.clear_area(grid, neighbor_x, neighbor_y, clearance=1)
                 # Prevent diagonal corner cutting
                 if abs(direction_x) == 1 and abs(direction_y) == 1:
                     if grid[neighbor_x][current_cell[1]] == 1 or grid[current_cell[0]][neighbor_y] == 1:
@@ -721,8 +760,9 @@ walls.generate()
 bushes = GenerateObject(amount= bush_amount , object= Bush, image= bush_image)
 bushes.generate()
 
-#shieldspawner aanmaken
-shield_spawner = ShieldSpawner(shield_image, player, bot, available_positions, list_of_objects)
+#shieldspawner en specialbulletspawner aanmaken
+shield_spawner = PowerUpSpawner(Shield, shield_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.has_shield and not bot.has_shield)
+special_bullet_spawner = PowerUpSpawner(SpecialBulletPickup, special_bullet_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.has_special_bullet)
 
 #game state op start zetten en welk lettertype tekst
 game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost"
@@ -773,10 +813,12 @@ while running:
         bot.shoot()
         bot.bot_movement()
         
-        #shield
+       #powerups: shield and special bullet
         shield_spawner.update()
+        special_bullet_spawner.update()
         shield_spawner.draw()
-                
+        special_bullet_spawner.draw()
+               
         #managen bullets and collsion bullets of player and bot
         player.manage(bullet_list= bullet_list_player, yourobject = "player", other_object = bot)
         bot.manage(bullet_list = bullet_list_bot, yourobject = "bot", other_object = player)
@@ -807,11 +849,8 @@ while running:
         bot_rect = MovingObject.blit_rotated_image(screen, bot.image, bot.pos, bot.angle, bot_size)
 
         #rect tekenen om collision te begrijpen
-        pygame.draw.rect(screen, (255, 0, 0), player_rect, 2)
-        pygame.draw.rect(screen, (0, 0, 255), bot_rect, 2)
-        # pygame.draw.line(screen,(255,0,0),bot.pos,player.pos)
-        # grids = Grid.line_grids(player.pos, bot.pos, grid_size)
-        
+        #pygame.draw.rect(screen, (255, 0, 0), player_rect, 2)
+        #pygame.draw.rect(screen, (0, 0, 255), bot_rect, 2)        
 
         if player.health <= 0:
             game_state = "lost"
