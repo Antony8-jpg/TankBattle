@@ -30,6 +30,8 @@ screen_height = screen_size[1]
 screen = pygame.display.set_mode((screen_length,screen_height))
 game_background = GameImage("plains.jpg", screen_size).image
 main_background = GameImage("main_background.jpg", screen_size).image
+winning_background = GameImage("winning_background.jpg", screen_size).image
+lost_background = GameImage("lost_background.jpg", screen_size).image
 pygame.display.set_caption("Tank Battle")
 icon = pygame.image.load("tank_icon.png")
 pygame.display.set_icon(icon)
@@ -192,7 +194,7 @@ class Player(MovingObject):
 
     def player_movement(self):
         #speed updaten en powerup checken
-        if self.speed_boost_active and pygame.time.get_ticks() - self.speed_boost_start_time > 10000:
+        if self.speed_boost_active and pygame.time.get_ticks() - self.speed_boost_start_time > speed_boost_duration:
             self.speed_boost_active = False
         
         actual_speed = self.base_speed * (1.5 if self.speed_boost_active else 1)
@@ -619,18 +621,21 @@ class Screen():
             pygame.draw.rect(screen, (0, 150, 255), (5, 210, progress * bar_width, bar_height)) #progress bar
 
     def draw_end_screen(message):
+        #screen.blit(main_background, (0,0))
         text = font.render(message, True, (255, 255, 255))
         subtext = small_font.render("Press R to Restart, ESC to Quit or i for instructions", True, (255, 255, 255))
-        screen.blit(text, (screen_length // 2 - text.get_width() // 2, screen_height // 3))
-        screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height // 2))
+        screen.blit(text, (screen_length // 2 - text.get_width() // 2, screen_height // 4))
+        screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height // 1.5))
         
     def draw_start_screen():
+        screen.blit(main_background, (0,0))
         title = font.render("Tank Battle", True, (255, 255, 255))
         subtitle = small_font.render("Press ENTER to Start or i for instructions", True, (255, 255, 255))
         screen.blit(title, (screen_length // 2 - title.get_width() // 2, screen_height // 3))
         screen.blit(subtitle, (screen_length // 2 - subtitle.get_width() // 2, screen_height // 2))
         
     def draw_instruction_screen():
+        screen.fill((0, 0, 0))
         instructions = [
             "Move with arrow keys",
             "Shoot bullets with SPACEBAR",
@@ -808,10 +813,10 @@ small_font = pygame.font.SysFont(None, 50)
 running = True
 while running:
     clock.tick(20)
-    if game_state == "running":    
+    """if game_state == "running":    
         screen.blit(game_background,(0,0))
     else:
-        screen.blit(main_background, (0,0))
+        screen.blit(main_background, (0,0))"""
     keys = pygame.key.get_pressed()
     
     for event in pygame.event.get():
@@ -834,7 +839,7 @@ while running:
     
     
     elif game_state == "running":
-        
+        screen.blit(game_background,(0,0))
         # alle functies laten runnen
         #player
         previous_pos = player.pos.copy()
@@ -929,8 +934,10 @@ while running:
         bushes.generate()
         
         if game_state == "won":
+            screen.blit(winning_background,(0,0))
             Screen.draw_end_screen("YOU WON!")
         else:
+            screen.blit(lost_background,(0,0))
             Screen.draw_end_screen("YOU LOST!")
 
         
