@@ -51,7 +51,7 @@ player_size = [40,40]
 player_image = GameImage("new_tank_image.png", player_size).image
 player_pos = pygame.math.Vector2(100, screen_height / 2)
 direction = pygame.math.Vector2(1,1)
-player_speed = 10
+player_speed = 7.5
 rotation_speed = 15
 angle = 0
 player_health = 5
@@ -774,18 +774,36 @@ class GenerateObject:
         self.amount = amount
         self.object = object
         self.image = image
-    
+                    
     def generate(self):
         for i in range(self.amount):
+            attempts = 0
             while True:
                 x, y = random.choice(available_positions)
                 object_pos = pygame.math.Vector2(x, y)
-                
-                if object_pos.distance_to(player.pos) > 2*player_size[0] and object_pos.distance_to(bot.pos) > 2*bot_size[0]:
-                    wall = self.object((x, y), self.image)
-                    list_of_objects.append(wall)
-                    available_positions.remove((x, y))
-                    break 
+
+                #niet te dicht bij speler of bot
+                if object_pos.distance_to(player.pos) <= 2 * player_size[0] or object_pos.distance_to(bot.pos) <= 2 * bot_size[0]:
+                    continue #lus begint opnieuw
+
+                #niet te dicht bij andere objecten
+                too_close = False
+                for obj in list_of_objects:
+                    if object_pos.distance_to(pygame.math.Vector2(obj.rect.topleft)) < 3 * wall_size[0]:
+                        too_close = True
+                        break
+                    
+                if too_close:
+                    attempts += 1
+                    if attempts > 100:
+                        break 
+                    continue #lus begint opnieuw
+
+                #alles checks zijn oké: object wordt geplaatst
+                wall = self.object((x, y), self.image)
+                list_of_objects.append(wall)
+                available_positions.remove((x, y))
+                break
 
 #objects
 player = Player(player_pos, direction, player_speed, rotation_speed, angle,player_image)
@@ -905,7 +923,7 @@ while running:
 
     # Win or Loss       
     elif game_state in ["won", "lost","start"]:
-        # reset alles
+        #reset alles
         player.health = 5
         bot.health = 5
         player.ammo = max_ammo
