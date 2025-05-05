@@ -2,6 +2,7 @@ import pygame
 import math
 import random
 from pygame import mixer
+from queue import PriorityQueue
 
 # TO DO:
 # startscreen met knoppen
@@ -342,7 +343,7 @@ class Bot(MovingObject):
         if self.path:
             next_step = Grid.grid_to_screen(self.path[0])
             if self.pos.distance_to(next_step) < 5:
-                self.path.pop(0) # haal het eerste element eruit
+                self.path.pop(0)  #haal het eerste element eruit
                 if len(self.path) == 0:
                     self.direction = pygame.math.Vector2(0, 0)
 
@@ -672,7 +673,7 @@ class Grid:
 
         return grid
     
-    def heuristic(a, b): # geeft een waarde (f_score) voor de afstand tot het doel -> van chatgpt
+    def heuristic(a, b): #Manhatten distance tussen twee punten a an b
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
     def clear_area(grid, x, y, clearance):  # om een vrije 3x3 gebied te vinden zodat de bot zeker door kan gaan (zou kunnen botsen tegen zijkant als 1x1)
@@ -699,72 +700,66 @@ class Grid:
         return True
 
     def astar(start_cell, goal_cell, grid): # code van chatgpt, pathfinding langs vrije pad
-        from heapq import heappush, heappop
+        #priority queue aanmaken en start_cell toevoegen met priority 0
+        open_cells = PriorityQueue()
+        open_cells.put((0, start_cell))
 
-        # priority queue van estimated_total_cost
-        open_cells = []
-        heappush(open_cells, (0, start_cell))
-
-        # om het beste path bij te houden
+        #dict om het pad bij te houden via backtracking 
         came_from = {}
-
-        # om de "kost" van het pad bij te houden
+        #de kost om van start tot huidige cell te gaan
         cost_from_start = {start_cell: 0}
 
-        # loopen over alle open cellen
-        while open_cells:
-            # beginnen met de cell met de kleinste estimated_total_cost
-            current_priority, current_cell = heappop(open_cells)
+        #loopen over alle open cellen
+        while not open_cells.empty():
+            #beginnen met de cell met de kleinste estimated_total_cost
+            current_priority, current_cell = open_cells.get()
 
-            # doel bereikt -> maak het pad in backtracking
+            #doel bereikt -> maak het pad via backtracking
             if current_cell == goal_cell:
                 path = []
                 while current_cell in came_from:
                     path.append(current_cell)
                     current_cell = came_from[current_cell]
-                path.reverse()
+                path.reverse() #pad moet nog omgedraaid worden
                 return path
 
-            # definieer alle mogelijke richtingen : up, down, left, right
+            #alle mogelijke richtingen: horizontaal, verticaal en diagonaal
             directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
             for direction_x, direction_y in directions:
-                neighbor_x = current_cell[0] + direction_x
-                neighbor_y = current_cell[1] + direction_y
-                neighbor_cell = (neighbor_x, neighbor_y)
+                neighbour_x = current_cell[0] + direction_x
+                neighbour_y = current_cell[1] + direction_y
+                neighbour_cell = (neighbour_x, neighbour_y)
 
-                # skip als de cel ernaast buiten het veld is
-                if neighbor_x < 0 or neighbor_x >= grid_length:
+                #begin opnieuw als de cel buiten het veld is
+                if neighbour_x < 0 or neighbour_x >= grid_length:
                     continue
-                if neighbor_y < 0 or neighbor_y >= grid_height:
+                if neighbour_y < 0 or neighbour_y >= grid_height:
                     continue
 
-                # skip als de cel ernaast niet "walkable" is
-                is_walkable = Grid.clear_area(grid, neighbor_x, neighbor_y, clearance=1)
-                # Prevent diagonal corner cutting
-                if abs(direction_x) == 1 and abs(direction_y) == 1:
-                    if grid[neighbor_x][current_cell[1]] == 1 or grid[current_cell[0]][neighbor_y] == 1:
-                        continue  # Can't move diagonally past a corner
+                #begin opnieuw als de cel ernaast niet vrij is
+                is_walkable = Grid.clear_area(grid, neighbour_x, neighbour_y, clearance=1)
                 if not is_walkable:
                     continue
-
-                # temporary cost van start tot neighbor, 1,41 voor diagonaal, 1 voor rechte lijn
-                step_cost = math.sqrt(2) if abs(direction_x) + abs(direction_y) == 2 else 1
                 
-                temporary_cost = cost_from_start[current_cell] + step_cost
+                #voorkomen dat je diagonaal door obstakels gaat
+                if abs(direction_x) == 1 and abs(direction_y) == 1: #diagonale beweging, vb: (2,2) -> (3,3)
+                    if grid[neighbour_x][current_cell[1]] == 1 or grid[current_cell[0]][neighbour_y] == 1: #1 = obstakel
+                        continue  
 
-                # als deze pad beter is dan de vorige
-                if neighbor_cell not in cost_from_start or temporary_cost < cost_from_start[neighbor_cell]:
-                    came_from[neighbor_cell] = current_cell
-                    cost_from_start[neighbor_cell] = temporary_cost
+                #de kost van de stap bepalen: 1 voor recht, sqrt(2) voor diagonaal en de kost updaten
+                step_cost = math.sqrt(2) if abs(direction_x) + abs(direction_y) == 2 else 1
+                new_cost = cost_from_start[current_cell] + step_cost
 
-                    # estimate total cost door heuristic
-                    estimated_remaining_cost = Grid.heuristic(neighbor_cell, goal_cell)
-                    estimated_total_cost = temporary_cost + estimated_remaining_cost
+                #als deze route goedkoper is dan een eerder gevonden pad naar deze cel
+                if neighbour_cell not in cost_from_start or new_cost < cost_from_start[neighbour_cell]:
+                    came_from[neighbour_cell] = current_cell #update het pad
+                    cost_from_start[neighbour_cell] = new_cost #kost van het pad updaten
 
-                    # neighbor toevoegen aan de queue
-                    heappush(open_cells, (estimated_total_cost, neighbor_cell))
+                    #Bereken de prioriteit met behulp van de manhatten distance en voeg toe aan de queue
+                    priority = new_cost + Grid.heuristic(neighbour_cell, goal_cell)
+                    open_cells.put((priority, neighbour_cell))
 
-        # If we exhaust all options without reaching the goal, return None
+        #Indien geen pad gevonden wordt 
         return None
 
 #klasse met een methode om walls en bushes aan te maken op random posities 
