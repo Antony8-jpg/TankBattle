@@ -283,25 +283,25 @@ class Bot(MovingObject):
 
     def bot_movement(self):
         current_time = pygame.time.get_ticks()
-        self.start = Grid.screen_to_grid(self.pos) # startpositie van de bot
+        self.start = Grid.screen_to_grid(self.pos) #startpositie van de bot in de grit
 
-        # als er een shield is gaat de bot ervoor (1 kans op 3)
-        shield_targeted = False
+        #als er een shield is gaat de bot ervoor (1 kans op 3)
+        #shield_targeted = False
         if shield_spawner.powerup and self.state != "shield": #shield state toevoegen om niet 2 shields te hebben
             if random.randint(1, 3) == 1:
                 self.goal = Grid.screen_to_grid(pygame.math.Vector2(shield_spawner.powerup.rect.center))
                 self.state = "shield" 
                 self.state_starttime = current_time 
-                self.state_duration = random.randint(3000, 5000) # gaat naar de shield enkel voor 4 seconden (om te voorkomen dat hij geblokkeerd is als hij zijn pad niet vindt)
+                self.state_duration = random.randint(3000, 5000) #gaat naar de shield enkel voor 4 seconden (om te voorkomen dat hij geblokkeerd is als hij zijn pad niet vindt)
                 print("going for shield")
-                shield_targeted = True
+                #shield_targeted = True
 
         # state update
         if self.state != "shield" and current_time - self.state_starttime > self.state_duration:
             self.state_starttime = current_time
             self.state_duration = random.randint(2000, 4000)
 
-            if self.pos.distance_to(player.pos) < 250: # volgt de player als die dichtbij is
+            if self.pos.distance_to(player.pos) < 250: #volgt de player als die dichtbij is
                 self.state = "follow"
             else:
                 self.state = random.choices(["random", "follow"], weights=[3, 1])[0] # 75% kans om random , [0] om de string terug te geven ipv de lijst
@@ -338,7 +338,7 @@ class Bot(MovingObject):
                         self.last_successful_path_time = current_time
                         print("alternative path")
 
-        # pad volgen
+        #pad volgen
         if self.path:
             next_step = Grid.grid_to_screen(self.path[0])
             if self.pos.distance_to(next_step) < 5:
@@ -346,7 +346,7 @@ class Bot(MovingObject):
                 if len(self.path) == 0:
                     self.direction = pygame.math.Vector2(0, 0)
 
-                    # als hij bij het einde geraakt van random/shield gaat hij over naar follow
+                    #als hij bij het einde geraakt van random/shield gaat hij over naar follow
                     if self.state in ["random", "shield"]:
                         self.state = "follow"
                         self.state_starttime = current_time
@@ -384,7 +384,7 @@ class Bot(MovingObject):
                 for dy in range(-search_radius, search_radius + 1):
                     x = target_grid[0] + dx
                     y = target_grid[1] + dy
-                    # zoekt een open plek rond de player
+                    # zoekt een vrije plek rond de player om naar toe te gaan
                     if 0 <= x < grid_length and 0 <= y < grid_height: 
                         if Grid.clear_area(grid, x, y, clearance=1):
                             return (x, y)
@@ -406,7 +406,6 @@ class Bot(MovingObject):
             self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
             bullet = Bullet(self.pos.copy(), self.direction.copy(), bullet_speed, self.angle, bullet_image)
             bullet_list_bot.append(bullet)
-
 
 class Bullet(MovingObject):
     def __init__(self, pos, direction, speed, angle, bulletIMG):
@@ -783,7 +782,7 @@ class GenerateObject:
                 object_pos = pygame.math.Vector2(x, y)
 
                 #niet te dicht bij speler of bot
-                if object_pos.distance_to(player.pos) <= 2 * player_size[0] or object_pos.distance_to(bot.pos) <= 2 * bot_size[0]:
+                if object_pos.distance_to(player.pos) <= 2 * player_size[0] or object_pos.distance_to(bot.pos) <= 4 * bot_size[0]:
                     continue #lus begint opnieuw
 
                 #niet te dicht bij andere objecten
