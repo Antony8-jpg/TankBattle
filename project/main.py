@@ -529,17 +529,18 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
     
     if game_state == "start":
         Screen.draw_start_screen()
-        if keys[pygame.K_KP_ENTER] or keys[pygame.K_RETURN]:  
+        if keys[pygame.K_KP_ENTER] or keys[pygame.K_RETURN] or start_button.clicked(event):  
             game_state = "running"
-        if keys[pygame.K_i]:
+        if keys[pygame.K_i] or instructions_button.clicked(event):
             game_state = "instructions"
             
     elif game_state == "instructions":
         Screen.draw_instruction_screen()
-        if keys[pygame.K_BACKSPACE]:
+        if keys[pygame.K_BACKSPACE] or back_to_homescreen_button.clicked(event):
             game_state = "start"
         if keys[pygame.K_KP_ENTER]:  
             game_state = "running"
@@ -613,24 +614,11 @@ while running:
     # Win or Loss       
     elif game_state in ["won", "lost","start"]:
         #reset alles
-        # player.health = 5
-        # bot.health = 5
-        # player.ammo = max_ammo
-        # player.has_special_bullet = True
-        # player.direction = pygame.math.Vector2(0, 1)
-        # bot.direction = pygame.math.Vector2(0, -1)
-        # player.pos = pygame.math.Vector2(100, screen_height / 2)
-        # bot.pos = pygame.math.Vector2(screen_length - 100, screen_height / 2)
-        # player.angle = 0
         bullet_list_player.clear()
         bullet_list_bot.clear()
         shield_spawner.reset()
         special_bullet_spawner.reset()
-        # player.has_shield = False
-        # bot.has_shield = False
         active_powerups.clear()
-        # player.speed_boost_active = False
-        # player.speed_boost_start_time = 0
         player.reset()
         bot.reset()
         
@@ -645,12 +633,14 @@ while running:
         if game_state == "won":
             screen.blit(winning_background,(0,0))
             Screen.draw_end_screen("YOU WON!")
+            won_button.draw(screen)
+        
         else:
             screen.blit(lost_background,(0,0))
             Screen.draw_end_screen("YOU LOST!")
-
+            lost_button.draw(screen)
         
-        if keys[pygame.K_r] or keys[pygame.K_KP_ENTER]:  
+        if keys[pygame.K_r] or keys[pygame.K_KP_ENTER] or won_button.clicked(event) or lost_button.clicked(event):  
             game_state = "running"
             
         if keys[pygame.K_i]:
