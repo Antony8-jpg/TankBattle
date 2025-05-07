@@ -1,6 +1,7 @@
-
 import pygame
 import random
+
+#import files
 from Variabels import *
 
 class PowerUp(StationaryObject):
@@ -74,13 +75,18 @@ class PowerUpSpawner:
         #collision met player
         if self.powerup and self.player.rect.colliderect(self.powerup.rect):
             self.powerup.apply_effect(self.player)
-            active_powerups.remove(self.powerup)
+            if self.powerup in active_powerups: #voorkomt dat een powerup wordt verwijdert terwijl het niet in de lijst zit
+                active_powerups.remove(self.powerup)
+            """active_powerups.remove(self.powerup)"""
             self.powerup = None
             
         #collision met bot (enkel voor shield)
         if self.powerup and isinstance(self.powerup, Shield) and self.bot.rect.colliderect(self.powerup.rect):
             self.powerup.apply_effect(self.bot)
-            active_powerups.remove(self.powerup)
+            if self.powerup in active_powerups:
+                active_powerups.remove(self.powerup)
+                self.powerup = None
+            """active_powerups.remove(self.powerup)"""
             self.powerup = None
               
 
