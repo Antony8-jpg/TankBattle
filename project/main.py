@@ -10,6 +10,7 @@ from Powerups import *
 from MovingObjects import *
 from Player import *
 from Grid import *
+from StationaryObjects import *
 
 #TO DO:
 #meerdere bots
@@ -175,53 +176,14 @@ class Bot(MovingObject):
         self.pos = pygame.math.Vector2(screen_length - 100, screen_height / 2)
         self.has_shield = False
 
-#klasse met een methode om walls en bushes aan te maken op random posities 
-class GenerateObject: 
-    def __init__(self, amount, object, image):
-        self.amount = amount
-        self.object = object
-        self.image = image
-                    
-    def generate(self):
-        for i in range(self.amount):
-            attempts = 0
-            while True:
-                x, y = random.choice(available_positions)
-                object_pos = pygame.math.Vector2(x, y)
-
-                #niet te dicht bij speler of bot
-                if object_pos.distance_to(player.pos) <= 2 * player_size[0] or object_pos.distance_to(bot.pos) <= 4 * bot_size[0]:
-                    continue #lus begint opnieuw
-
-                #niet te dicht bij andere objecten
-                too_close = False
-                for obj in list_of_objects:
-                    if object_pos.distance_to(pygame.math.Vector2(obj.rect.topleft)) < 3 * wall_size[0]:
-                        too_close = True
-                        break
-                    
-                if too_close:
-                    attempts += 1
-                    if attempts > 100:
-                        break 
-                    continue #lus begint opnieuw
-
-                #alles checks zijn oké: object wordt geplaatst
-                wall = self.object((x, y), self.image)
-                list_of_objects.append(wall)
-                available_positions.remove((x, y))
-                break
-
 #objects
 player = Player(player_pos, direction, player_speed, rotation_speed, angle,player_image)
 bot = Bot(bot_pos,bot_image,bot_speed,bot_angle)
 
 #walls and bushes generaten
-"""list_of_objects = [] #walls en bushes worden in deze lijst geplaatst"""
-available_positions = Screen.available_positions()
-walls = GenerateObject(amount= wall_amount , object= Wall, image = wall_image)
+walls = GenerateObject(wall_amount, Wall, wall_image, player, bot)
 walls.generate()
-bushes = GenerateObject(amount= bush_amount , object= Bush, image= bush_image)
+bushes = GenerateObject(bush_amount, Bush, bush_image, player, bot)
 bushes.generate()
 
 # #powerups aanmaken
@@ -229,15 +191,12 @@ shield_spawner = PowerUpSpawner(Shield, shield_image, player, bot, list_of_objec
 special_bullet_spawner = PowerUpSpawner(SpecialBulletPickup, special_bullet_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.has_special_bullet)
 speedboost_spawner = PowerUpSpawner(SpeedBoost, speed_boost_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.speed_boost_active)
 
+game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost"
 
 #gameloop
 running = True
 while running:
     clock.tick(20)
-    """if game_state == "running":    
-        screen.blit(game_background,(0,0))
-    else:
-        screen.blit(main_background, (0,0))"""
     keys = pygame.key.get_pressed()
     
     for event in pygame.event.get():
