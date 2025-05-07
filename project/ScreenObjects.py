@@ -3,7 +3,6 @@ import pygame
 # import files
 from Variabels import *
 
-
 class Wall(StationaryObject):
     def __init__(self,pos, wallIMG):
         super().__init__(pos)
@@ -192,7 +191,7 @@ lost_button = Button(rect=(screen_length //2 - 200 , 520, 400, 80),
                     text= "Get revenge!",
                     font=small_font,
                     text_colour=(255,255,255),
-                    background_colour=(0,0,0),
+                    background_colour=(0,255,0),
                     hover_colour=(200,200,200)
                     )
 
