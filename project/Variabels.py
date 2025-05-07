@@ -70,6 +70,7 @@ max_ammo = 3
 special_bullet_image = GameImage("bullet_special.png", bullet_size).image
 
 #wall
+list_of_objects = [] #walls en bushes worden in deze lijst geplaatst
 wall_size = [35,35]
 wall_image = GameImage("brick_wall.png", wall_size).image
 wall_amount = 15
@@ -119,4 +120,3 @@ class StationaryObject(Object):
 
     def draw(self):
         screen.blit(self.image, self.rect.topleft)
-
