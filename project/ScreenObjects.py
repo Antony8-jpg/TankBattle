@@ -1,6 +1,6 @@
 import pygame
 
-# import files
+#import files
 from Variabels import *
 
 class Wall(StationaryObject):
