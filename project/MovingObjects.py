@@ -3,6 +3,7 @@ import pygame
 #import files
 from Variabels import *
 from ScreenObjects import *
+from StationaryObjects import *
 
 class MovingObject(Object):
     def __init__(self,pos):
