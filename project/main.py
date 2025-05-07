@@ -1,117 +1,23 @@
 import pygame
-
-# import files
-from Variabels import *
-from ScreenObjects import *
-from Powerups import *
-from MovingObjects import *
-
-import pygame
 import math
 import random
 from queue import PriorityQueue
 
-# TO DO:
-# meerdere bots
-# in meerdere files zetten
+#import files
+from Variabels import *
+from ScreenObjects import *
+from Powerups import *
+from MovingObjects import *
+from Player import *
+from Grid import *
+
+#TO DO:
+#meerdere bots
 
 pygame.init()
 clock = pygame.time.Clock()
 current_time = pygame.time.get_ticks()        
 last_print_time = 0
-
-class Player(MovingObject):
-    def __init__(self,pos,direction,player_speed,rotation_speed,angle,playerImg):
-        super().__init__(pos)
-        self.direction = direction
-        self.rotation_speed = rotation_speed
-        self.angle = angle
-        self.image = playerImg
-        self.rect = pygame.Rect(self.pos.x, self.pos.y, player_size[0], player_size[1])
-        self.last_shot_time = 0 #timer voor bullets    
-        self.ammo = 3
-        self.last_reload_time = pygame.time.get_ticks()
-        self.health = 5
-        self.has_special_bullet = True
-        self.has_shield = False
-        self.speed_boost_active = False
-        self.speed_boost_start_time = 0
-        self.base_speed = player_speed
-
-    def player_movement(self):
-        #speed updaten en powerup checken
-        if self.speed_boost_active and pygame.time.get_ticks() - self.speed_boost_start_time > speed_boost_duration:
-            self.speed_boost_active = False
-        
-        actual_speed = self.base_speed * (1.5 if self.speed_boost_active else 1)
-        
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_UP]:
-            self.speed = actual_speed
-        elif keys[pygame.K_DOWN]:
-            self.speed = -actual_speed
-        else:
-            self.speed = 0  
-        if keys[pygame.K_LEFT]:
-            self.angle += self.rotation_speed 
-        if keys[pygame.K_RIGHT]:
-            self.angle -= self.rotation_speed
-    
-    def update(self,lengte,hoogte):
-        dy = math.cos(math.radians(self.angle))
-        dx = math.sin(math.radians(self.angle))
-        self.direction = -pygame.math.Vector2(dx, dy)
-        # beweging samenvoegen
-        self.pos += self.speed * self.direction
-        
-        rotated_image = pygame.transform.rotate(self.image,self.angle)
-        self.rect.center = self.pos
-        self.rect = rotated_image.get_rect(center = self.pos)
-        
-        self.pos.x = max(0, min(self.pos.x, lengte))
-        self.pos.y = max(0, min(self.pos.y, hoogte))
-        
-        return rotated_image, self.rect   
-    
-    def reload_ammo(self):
-        current_time = pygame.time.get_ticks()        
-        if self.ammo < max_ammo and current_time - self.last_reload_time >= bullet_cooldown:
-            self.ammo += 1
-            self.last_reload_time = current_time
-    
-    def shoot(self):
-        current_time = pygame.time.get_ticks()  
-        keys = pygame.key.get_pressed() 
-        if keys[pygame.K_SPACE] and self.ammo > 0 and current_time - self.last_shot_time > 333: 
-            self.last_shot_time = current_time #tijd updaten
-            bullet = Bullet(self.pos.copy(), self.direction.copy(), bullet_speed, self.angle, bullet_image)
-            bullet_list_player.append(bullet)
-            self.ammo -= 1  
-            
-    def shoot_special(self):
-        current_time = pygame.time.get_ticks()
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_f] and self.has_special_bullet and current_time - self.last_shot_time > 500:
-            self.last_shot_time = current_time
-            special_bullet = SpecialBullet(self.pos.copy(), self.direction.copy(), bullet_speed, self.angle, special_bullet_image)
-            bullet_list_player.append(special_bullet)
-            self.has_special_bullet = False
-            
-    def player_grid_pos(self):  # dient voor niks denk ik 
-        grid_x = int(self.pos.x)//grid_size
-        grid_y = int(self.pos.y)//grid_size
-        return grid_x,grid_y
-    
-    def reset(self):
-        self.health = 5
-        self.ammo = max_ammo
-        self.has_special_bullet = True
-        self.direction = pygame.math.Vector2(0, 1)
-        self.pos = pygame.math.Vector2(100, screen_height / 2)
-        self.angle = 0
-        self.has_shield = False
-        self.speed_boost_active = False
-        self.speed_boost_start_time = 0
 
 class Bot(MovingObject):
     def __init__(self, pos,image,speed,angle):
@@ -268,114 +174,6 @@ class Bot(MovingObject):
         self.direction = pygame.math.Vector2(0, -1)
         self.pos = pygame.math.Vector2(screen_length - 100, screen_height / 2)
         self.has_shield = False
-
-class Grid:
-    def screen_to_grid(pos): 
-        return (int(pos.x) // grid_size, int(pos.y) // grid_size)
-
-    def grid_to_screen(grid_pos):
-        return pygame.math.Vector2((grid_pos[0] + 0.5) * grid_size, (grid_pos[1] + 0.5) * grid_size)
-
-    def build_grid(): # maak een de map een grid van nullen en 1 , 0 als vrij en 1 als er een obstacle is
-        grid = []
-        for i in range(grid_length): # verandert elke cel in een 0 
-            row = [0] * grid_height 
-            grid.append(row)
-
-        for obj in list_of_objects: # vervangt de 0 door een 1 als er een obstacle is
-            if isinstance(obj, (Wall, Bush)):
-                grid[obj.grid_x][obj.grid_y] = 1
-
-        return grid
-    
-    def heuristic(a, b): #Manhatten distance tussen twee punten a an b
-        return abs(a[0] - b[0]) + abs(a[1] - b[1])
-
-    def clear_area(grid, x, y, clearance):  # om een vrije 3x3 gebied te vinden zodat de bot zeker door kan gaan (zou kunnen botsen tegen zijkant als 1x1)
-        grid_width = len(grid)
-        grid_height = len(grid[0])
-        
-        # gaat loopen over elke grid in nabijheid bot (3x3) als die vrij is of niet, clearance zal =1 zijn bij oproepen van functie
-        for dx in range(-clearance, clearance + 1):
-            for dy in range(-clearance, clearance + 1):
-                check_x = x + dx
-                check_y = y + dy
-
-                # overslaan als de cel buiten de grid is
-                if check_x < 0 or check_x >= grid_width:
-                    return False
-                if check_y < 0 or check_y >= grid_height:
-                    return False
-
-                # checken als obstacle op de grid
-                if grid[check_x][check_y] == 1:
-                    return False
-
-        # alle andere grids zijn dan vrij -> True
-        return True
-
-    def astar(start_cell, goal_cell, grid): # code van chatgpt, pathfinding langs vrije pad
-        #priority queue aanmaken en start_cell toevoegen met priority 0
-        open_cells = PriorityQueue()
-        open_cells.put((0, start_cell))
-
-        #dict om het pad bij te houden via backtracking 
-        came_from = {}
-        #de kost om van start tot huidige cell te gaan
-        cost_from_start = {start_cell: 0}
-
-        #loopen over alle open cellen
-        while not open_cells.empty():
-            #beginnen met de cell met de kleinste estimated_total_cost
-            current_priority, current_cell = open_cells.get()
-
-            #doel bereikt -> maak het pad via backtracking
-            if current_cell == goal_cell:
-                path = []
-                while current_cell in came_from:
-                    path.append(current_cell)
-                    current_cell = came_from[current_cell]
-                path.reverse() #pad moet nog omgedraaid worden
-                return path
-
-            #alle mogelijke richtingen: horizontaal, verticaal en diagonaal
-            directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
-            for direction_x, direction_y in directions:
-                neighbour_x = current_cell[0] + direction_x
-                neighbour_y = current_cell[1] + direction_y
-                neighbour_cell = (neighbour_x, neighbour_y)
-
-                #begin opnieuw als de cel buiten het veld is
-                if neighbour_x < 0 or neighbour_x >= grid_length:
-                    continue
-                if neighbour_y < 0 or neighbour_y >= grid_height:
-                    continue
-
-                #begin opnieuw als de cel ernaast niet vrij is
-                is_walkable = Grid.clear_area(grid, neighbour_x, neighbour_y, clearance=1)
-                if not is_walkable:
-                    continue
-                
-                #voorkomen dat je diagonaal door obstakels gaat
-                if abs(direction_x) == 1 and abs(direction_y) == 1: #diagonale beweging, vb: (2,2) -> (3,3)
-                    if grid[neighbour_x][current_cell[1]] == 1 or grid[current_cell[0]][neighbour_y] == 1: #1 = obstakel
-                        continue  
-
-                #de kost van de stap bepalen: 1 voor recht, sqrt(2) voor diagonaal en de kost updaten
-                step_cost = math.sqrt(2) if abs(direction_x) + abs(direction_y) == 2 else 1
-                new_cost = cost_from_start[current_cell] + step_cost
-
-                #als deze route goedkoper is dan een eerder gevonden pad naar deze cel
-                if neighbour_cell not in cost_from_start or new_cost < cost_from_start[neighbour_cell]:
-                    came_from[neighbour_cell] = current_cell #update het pad
-                    cost_from_start[neighbour_cell] = new_cost #kost van het pad updaten
-
-                    #Bereken de prioriteit met behulp van de manhatten distance en voeg toe aan de queue
-                    priority = new_cost + Grid.heuristic(neighbour_cell, goal_cell)
-                    open_cells.put((priority, neighbour_cell))
-
-        #Indien geen pad gevonden wordt 
-        return None
 
 #klasse met een methode om walls en bushes aan te maken op random posities 
 class GenerateObject: 
