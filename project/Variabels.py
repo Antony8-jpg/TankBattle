@@ -32,7 +32,7 @@ hit_sound = mixer.Sound("hit_sound.ogg")
 hit_sound.set_volume(1.0)
                     
 # grid
-grid_size = 35
+grid_size = 37
 grid_length = screen_length // grid_size
 grid_height = screen_height // grid_size
 
@@ -78,7 +78,7 @@ wall_amount = 15
 #bush
 bush_size = [35,35]
 bush_image = GameImage("bush.png", bush_size).image
-bush_amount = 15
+bush_amount = 10
 
 #heart
 playerheart_size = [50,50]
