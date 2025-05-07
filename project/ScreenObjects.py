@@ -92,10 +92,10 @@ class Screen():
     def draw_end_screen(message):
         #screen.blit(main_background, (0,0))
         text = font.render(message, True, (255, 255, 255))
-        subtext = small_font.render("Press R to Restart, ESC to Quit or i for instructions", True, (255, 255, 255))
         screen.blit(text, (screen_length // 2 - text.get_width() // 2, screen_height // 4))
-        screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height // 1.5))
-        #restart_button.draw(screen)
+        #subtext = small_font.render("Press R to Restart, ESC to Quit or i for instructions", True, (255, 255, 255))
+        #screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height // 1.5))
+        
         
         
     def draw_start_screen():
@@ -104,8 +104,8 @@ class Screen():
         subtitle = small_font.render("Press ENTER to Start or i for instructions", True, (255, 255, 255))
         screen.blit(title, (screen_length // 2 - title.get_width() // 2, screen_height // 3))
         screen.blit(subtitle, (screen_length // 2 - subtitle.get_width() // 2, screen_height // 2))
-        #start_button.draw(screen)
-        #instructions_button.draw(screen)
+        start_button.draw(screen)
+        instructions_button.draw(screen)
 
         
     def draw_instruction_screen():
@@ -119,39 +119,51 @@ class Screen():
         ]
         title = font.render("Instructions", True, (255, 255, 255))
         screen.blit(title, (screen_length // 2 - title.get_width() // 2, 50))
-    
+        back_to_homescreen_button.draw(screen)
+
         for i, line in enumerate(instructions): #positie van de tekst en de lijn bijhouden
             line_render = small_font.render(line, True, (255, 255, 255))
             screen.blit(line_render, (screen_length // 2 - line_render.get_width() // 2, 150 + i * 60)) #positie van de tekst bepalen
-    
-        subtext = small_font.render("Press BACKSPACE to return to title screen or ENTER to start", True, (255, 255, 255))
-        screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height - 100))
+        # niet meer nodig want er is een knop
+        # subtext = small_font.render("Press BACKSPACE to return to title screen or ENTER to start", True, (255, 255, 255))
+        # screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height - 100))
 
-# class Button():
-#     def __init__(self, rect, text, font, text_colour, background_colour, hover_colour):
-#         self.rect = pygame.Rect(rect)
-#         self.text = text
-#         self.font = font
-#         self.text_colour = text_colour
-#         self.background_colour = background_colour
-#         self.hover_colour = hover_colour
+class Button():
+    def __init__(self, rect, text, font, text_colour, background_colour, hover_colour,is_circle=False, radius=None):
+        self.rect = pygame.Rect(rect)
+        self.text = text
+        self.font = font
+        self.text_colour = text_colour
+        self.background_colour = background_colour
+        self.hover_colour = hover_colour
+        self.circle = is_circle
+        self.radius = radius
+        if self.circle and radius is None:
+            self.radius = min(self.rect.width, self.rect.height) // 2  # fallback radius
 
-#     def draw(self, surface):
-#         mouse_pos = pygame.mouse.get_pos()
-#         if self.rect.collidepoint(mouse_pos):
-#             current_colour = self.hover_colour #lichtere kleur als de muis op die positie is 
-#         else:
-#             current_colour = self.background_colour
-#         pygame.draw.rect(surface, current_colour, self.rect)
-#         text_surf = self.font.render(self.text, True, self.text_colour)
-#         text_rect = text_surf.get_rect(center=self.rect.center)
-#         surface.blit(text_surf, text_rect)
+    def draw(self, surface):
+        mouse_pos = pygame.mouse.get_pos()
+        
+        # kleur aanpassen
+        if self.rect.collidepoint(mouse_pos):
+            current_colour = self.hover_colour #lichtere kleur als de muis op die positie is 
+        else:
+            current_colour = self.background_colour
+        # draw
+        if self.circle: # circle
+            pygame.draw.circle(surface, current_colour, self.rect.center, self.radius)
+        else: # rectangle
+            pygame.draw.rect(surface, current_colour, self.rect)
 
-#     def clicked(self, event):
-#         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left click
-#             if self.rect.collidepoint(pygame.mouse.get_pos()):
-#                 return True
-#         return False
+        text_surf = self.font.render(self.text, True, self.text_colour)
+        text_rect = text_surf.get_rect(center=self.rect.center)
+        surface.blit(text_surf, text_rect)
+
+    def clicked(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left click
+            if self.rect.collidepoint(pygame.mouse.get_pos()):
+                return True
+        return False
 
 
 #game state op start zetten en welk lettertype tekst
@@ -159,25 +171,43 @@ game_state = "start"  #verschillende states: "start", "instructions", "running",
 font = pygame.font.SysFont(None, 100)
 small_font = pygame.font.SysFont(None, 50)
 
+
+
 # buttons
-# start_button = Button(rect=(screen_length // 2 - 100, screen_height // 2, 200, 60),
-#                       text="Start",
-#                       font=small_font,
-#                       text_colour=(255,255,255),
-#                       background_colour=(0,0,0),
-#                       hover_colour=(200,200,200)
-#                       )
-# restart_button = Button(rect=(screen_length // - 200 , screen_height // 2+ 200, 400, 80),
-#                     text="Take your revenge",
-#                     font=small_font,
-#                     text_colour=(255,255,255),
-#                     background_colour=(0,0,0),
-#                     hover_colour=(200,200,200)
-#                     )
-# instructions_button = Button(rect=(screen_length // 2 +200, screen_height // 2+ 100, 400, 80),
-#                     text="Instructions",
-#                     font=small_font,
-#                     text_colour=(255,255,255),
-#                     background_colour=(0,0,0),
-#                     hover_colour=(200,200,200)
-#                     )
+start_button = Button(rect=(screen_length//2 -100,520, 200, 60),
+                      text="Start",
+                      font=small_font,
+                      text_colour=(255,255,255),
+                      background_colour=(20,20,20),
+                      hover_colour=(200,200,200)
+                      )
+won_button = Button(rect=(screen_length //2 - 200 , 520, 400, 80),
+                    text= "Play again!",
+                    font=small_font,
+                    text_colour=(255,255,255),
+                    background_colour=(0,0,0),
+                    hover_colour=(200,200,200)
+                    )
+lost_button = Button(rect=(screen_length //2 - 200 , 520, 400, 80),
+                    text= "Get revenge!",
+                    font=small_font,
+                    text_colour=(255,255,255),
+                    background_colour=(0,0,0),
+                    hover_colour=(200,200,200)
+                    )
+
+instructions_button = Button(rect=(20,20, 40, 40),
+                    text="?",
+                    font=small_font,
+                    text_colour=(255,255,255),
+                    background_colour=(0,0,0),
+                    hover_colour=(200,200,200),
+                    is_circle = True
+                    )
+back_to_homescreen_button = Button(rect=(screen_length//2 -100,450, 200, 60),
+                      text="Back",
+                      font=small_font,
+                      text_colour=(255,255,255),
+                      background_colour=(20,20,20),
+                      hover_colour=(200,200,200)
+                      )
