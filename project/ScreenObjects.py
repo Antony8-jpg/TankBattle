@@ -3,24 +3,6 @@ import pygame
 #import files
 from Variabels import *
 
-class Wall(StationaryObject):
-    def __init__(self,pos, wallIMG):
-        super().__init__(pos)
-        self.image = wallIMG
-        self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
-
-    def draw(self):
-       return super().draw()
-
-class Bush(StationaryObject):
-    def __init__(self,pos, bushIMG):
-        super().__init__(pos)
-        self.image = bushIMG
-        self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
-    
-    def draw(self):
-        return super().draw()
-
 class Screen():
     def __init__(self,pos):
         self.pos = pos
@@ -164,13 +146,9 @@ class Button():
                 return True
         return False
 
-
-#game state op start zetten en welk lettertype tekst
-game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost"
+#letttertype 
 font = pygame.font.SysFont(None, 100)
 small_font = pygame.font.SysFont(None, 50)
-
-
 
 # buttons
 start_button = Button(rect=(screen_length//2 -100,520, 200, 60),
