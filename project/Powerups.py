@@ -98,3 +98,4 @@ class PowerUpSpawner:
         self.powerup = None
         self.timer_active = False
         self.next_spawn_time = 0
+
