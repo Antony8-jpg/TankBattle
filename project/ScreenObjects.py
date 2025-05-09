@@ -44,19 +44,20 @@ class Screen():
         for i in range(bot_health):
             screen.blit(heart_image,(x_waarde + i*spacing,y_waarde))
             
-    def draw_shield_indicator(player, bot):
+    def draw_shield_indicator(player, bot1,bot2):
         #shield player wordt naast health getoond
+        list = [bot1,bot2]
+        #shield van de bot wordt naast de hartjes van de bot getoond
+        for object in list:
+            if object.has_shield:
+                spacing = bot_size[0] / max(object.health, 1)
+                bot_heart_x = object.pos.x - bot_size[0]/2 + object.health * spacing
+                bot_heart_y = object.pos.y - bot_size[1]
+                screen.blit(botshield_image, (bot_heart_x + 5, bot_heart_y))
         if player.has_shield:
             x = heart_pos[0] + player.health * playerheart_size[0] + 5  #rechts van de laatste hartje
             y = heart_pos[1] 
             screen.blit(playershield_image, (x, y))
-    
-        #shield van de bot wordt naast de hartjes van de bot getoond
-        if bot.has_shield:
-            spacing = bot_size[0] / max(bot.health, 1)
-            bot_heart_x = bot.pos.x - bot_size[0]/2 + bot.health * spacing
-            bot_heart_y = bot.pos.y - bot_size[1]
-            screen.blit(botshield_image, (bot_heart_x + 5, bot_heart_y))
 
     def draw_speed_boost(player, position = (5, 165)):
         if player.speed_boost_active:
@@ -71,11 +72,8 @@ class Screen():
             pygame.draw.rect(screen, (0, 150, 255), (5, 210, progress * bar_width, bar_height)) #progress bar
 
     def draw_end_screen(message):
-        #screen.blit(main_background, (0,0))
         text = font.render(message, True, (255, 255, 255))
         screen.blit(text, (screen_length // 2 - text.get_width() // 2, screen_height // 4))
-        #subtext = small_font.render("Press R to Restart, ESC to Quit or i for instructions", True, (255, 255, 255))
-        #screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height // 1.5))
         instructions_button.draw(screen)
         
         
@@ -106,9 +104,6 @@ class Screen():
         for i, line in enumerate(instructions): #positie van de tekst en de lijn bijhouden
             line_render = small_font.render(line, True, (255, 255, 255))
             screen.blit(line_render, (screen_length // 2 - line_render.get_width() // 2, 150 + i * 60)) #positie van de tekst bepalen
-        # niet meer nodig want er is een knop
-        # subtext = small_font.render("Press BACKSPACE to return to title screen or ENTER to start", True, (255, 255, 255))
-        # screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height - 100))
         
     def draw_gamemode_screen():
         screen.fill((0,0,0))
