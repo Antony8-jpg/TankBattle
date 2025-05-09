@@ -33,11 +33,12 @@ class SpeedBoost(PowerUp):
         player.speed_boost_start_time = pygame.time.get_ticks()
    
 class PowerUpSpawner:
-    def __init__(self, powerup_class, image, player, bot, list_of_objects, available_positions, condition_func):
+    def __init__(self, powerup_class, image, player, bot1,bot2, list_of_objects, available_positions, condition_func):
         self.powerup_class = powerup_class
         self.image = image
         self.player = player
-        self.bot = bot
+        self.bot = bot1
+        self.bot2 = bot2
         self.list_of_objects = list_of_objects
         self.available_positions = available_positions
         self.condition_func = condition_func  #dit is een functie die nodig is om voorwaarden te checken, maar die verschillend is voor elke powerup bv. not player.has_shield
@@ -51,7 +52,7 @@ class PowerUpSpawner:
 
         #tijdsinterval voor het spawnen van de powerup starten
         if not self.timer_active and self.powerup is None and self.condition_func(self.player): 
-            self.next_spawn_time = current_time + random.randint(10000, 30000)
+            self.next_spawn_time = current_time + random.randint(10000, 20000)
             self.timer_active = True
 
         #positie voor de powerrup zoeken
@@ -80,7 +81,7 @@ class PowerUpSpawner:
             """active_powerups.remove(self.powerup)"""
             self.powerup = None
             
-        #collision met bot (enkel voor shield)
+        #collision met bot1 (enkel voor shield)
         if self.powerup and isinstance(self.powerup, Shield) and self.bot.rect.colliderect(self.powerup.rect):
             self.powerup.apply_effect(self.bot)
             if self.powerup in active_powerups:
@@ -88,7 +89,15 @@ class PowerUpSpawner:
                 self.powerup = None
             """active_powerups.remove(self.powerup)"""
             self.powerup = None
-              
+        
+        #collision met bot2 (enkel voor shield)
+        if self.powerup and isinstance(self.powerup, Shield) and self.bot2.rect.colliderect(self.powerup.rect):
+            self.powerup.apply_effect(self.bot2)
+            if self.powerup in active_powerups:
+                active_powerups.remove(self.powerup)
+                self.powerup = None
+            """active_powerups.remove(self.powerup)"""
+            self.powerup = None
 
     def draw(self):
         if self.powerup:
