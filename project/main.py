@@ -13,7 +13,9 @@ from Grid import *
 from StationaryObjects import *
 
 #TO DO:
-#meerdere bots
+# comments toevoegen
+# code schoonmaken
+# lijst van wat we van chatgpt hebben gekregen??
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -28,7 +30,7 @@ class Bot(MovingObject):
         self.speed = speed
         self.angle = angle
         self.last_shot_time = 0
-        self.health = bot_health
+        self.health = 5
         self.has_shield = False
         # movement state
         self.state = "random"
@@ -44,22 +46,26 @@ class Bot(MovingObject):
         # random goal
         self.random_goal_x = random.randint(0, screen_length)
         self.random_goal_y = random.randint(0, screen_height)
+        # cooldown toevoegen zodat de bots niet altijd naar de shield gaan (zonder cooldown-> 100% kans)
+        self.last_shield_check_time = 0
+        self.shield_check_cooldown = random.randint(3000, 7000)
 
     def bot_movement(self):
         current_time = pygame.time.get_ticks()
         self.start = Grid.screen_to_grid(self.pos) #startpositie van de bot in de grit
 
-        #als er een shield is gaat de bot ervoor (1 kans op 3)
-        #shield_targeted = False
-        if shield_spawner.powerup and self.state != "shield": #shield state toevoegen om niet 2 shields te hebben
-            if random.randint(1, 3) == 1:
-                self.goal = Grid.screen_to_grid(pygame.math.Vector2(shield_spawner.powerup.rect.center))
-                self.state = "shield" 
-                self.state_starttime = current_time 
-                self.state_duration = random.randint(3000, 5000) #gaat naar de shield enkel voor 4 seconden (om te voorkomen dat hij geblokkeerd is als hij zijn pad niet vindt)
-                print("going for shield")
-                #shield_targeted = True
-
+        #als er een shield is gaat de bot ervoor (1 kans op 2)
+        if shield_spawner.powerup and self.state != "shield" and self.pos.distance_to(player.pos)>200: #shield state toevoegen om niet 2 shields te hebben
+            if current_time - self.last_shield_check_time > self.shield_check_cooldown:
+                self.last_shield_check_time = current_time
+                self.shield_check_cooldown = random.randint(2000, 4000)  # reset cooldown
+                if random.randint(1, 2) == 1:
+                    self.goal = Grid.screen_to_grid(pygame.math.Vector2(shield_spawner.powerup.rect.center))
+                    self.state = "shield" 
+                    self.state_starttime = current_time 
+                    self.state_duration = random.randint(3000, 5000) #gaat naar de shield enkel voor 4 seconden (om te voorkomen dat hij geblokkeerd is als hij zijn pad niet vindt)
+                    print("going for shield")
+                    
         # state update
         if self.state == "shield" and shield_spawner.powerup == None:
             self.state = "follow"
@@ -105,7 +111,7 @@ class Bot(MovingObject):
                         print("alternative path")
 
         #pad volgen
-        if self.path  and self.pos.distance_to(player.pos) > 100:
+        if self.path  and self.pos.distance_to(player.pos) > 60:
             self.speed  = bot_speed
             next_step = Grid.grid_to_screen(self.path[0])
             if self.pos.distance_to(next_step) < 5:
@@ -166,65 +172,68 @@ class Bot(MovingObject):
         self.rect = rotated_bot_image.get_rect(center = self.pos)
         return rotated_bot_image, self.rect
     
-    def shoot(self):
+    def shoot(self,bullet_list):
         current_time = pygame.time.get_ticks()
         if current_time - self.last_shot_time > bot_shooting_speed: # zodat hij niet schiet als die stil staat-> kan voor bug zorgen
             self.last_shot_time = current_time
             self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
             bullet = Bullet(self.pos.copy(), self.direction.copy(), bullet_speed, self.angle, bullet_image)
-            bullet_list_bot.append(bullet)
+            bullet_list.append(bullet)
 
     def reset(self):
-        self.health = bot_health
+        self.health = 5
         self.direction = pygame.math.Vector2(0, -1)
-        self.pos = pygame.math.Vector2(screen_length - 100, screen_height / 2)
         self.has_shield = False
 
 #objects
 player = Player(player_pos, direction, player_speed, rotation_speed, angle,player_image)
 bot = Bot(bot_pos,bot_image,bot_speed,bot_angle)
+bot2 = Bot(bot2_pos,bot_image,bot_speed,bot_angle)
+bot1_alive = True
+bot2_alive = False # enkel vanaf medium laten spawnen
 
 #walls and bushes generaten
-walls = GenerateObject(wall_amount, Wall, wall_image, player, bot)
+walls = GenerateObject(wall_amount, Wall, wall_image, player, bot1_start_pos,bot2_start_pos)
 walls.generate()
-bushes = GenerateObject(bush_amount, Bush, bush_image, player, bot)
+bushes = GenerateObject(bush_amount, Bush, bush_image, player, bot1_start_pos,bot2_start_pos)
 bushes.generate()
 
 # #powerups aanmaken
-shield_spawner = PowerUpSpawner(Shield, shield_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.has_shield and not bot.has_shield)
-special_bullet_spawner = PowerUpSpawner(SpecialBulletPickup, special_bullet_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.has_special_bullet)
-speedboost_spawner = PowerUpSpawner(SpeedBoost, speed_boost_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.speed_boost_active)
+shield_spawner = PowerUpSpawner(Shield, shield_image, player, bot, bot2, list_of_objects, available_positions, condition_func = lambda x: not x.has_shield and not bot.has_shield)
+special_bullet_spawner = PowerUpSpawner(SpecialBulletPickup, special_bullet_image, player, bot, bot2, list_of_objects, available_positions, condition_func = lambda x: not x.has_special_bullet)
+speedboost_spawner = PowerUpSpawner(SpeedBoost, speed_boost_image, player, bot, bot2, list_of_objects, available_positions, condition_func = lambda x: not x.speed_boost_active)
 
-game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost", "gamemode"
+game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost"
+previous_gamemode = "easy"
 medium_unlocked = False
 hard_unlocked = False
-previous_gamemode = "easy"
 
 #gameloop
 running = True
 while running:
     clock.tick(20)
     keys = pygame.key.get_pressed()
-    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-
     
+    # start window
     if game_state == "start":
         Screen.draw_start_screen()
         if keys[pygame.K_KP_ENTER] or keys[pygame.K_RETURN] or start_button.clicked(event):  
             game_state = "gamemode"
         if keys[pygame.K_i] or instructions_button.clicked(event):
             game_state = "instructions"
-            
+    
+    # instruction window       
     elif game_state == "instructions":
         Screen.draw_instruction_screen()
         if keys[pygame.K_BACKSPACE] or back_to_homescreen_button.clicked(event):
             game_state = "start"
-        if keys[pygame.K_KP_ENTER] or start_button.clicked(event):  
+        if keys[pygame.K_KP_ENTER]or start_button.clicked(event):  
             game_state = "gamemode"
     
+    # gamemode window
     elif game_state == "gamemode":
         Screen.draw_gamemode_screen()
         if easy_button.clicked(event):
@@ -234,27 +243,30 @@ while running:
             game_state = "running"
             
         elif medium_button.clicked(event) and medium_unlocked:
-            bot_shooting_speed = 1500
-            bot_speed = 5
+            bot2_alive = True
+            bot_shooting_speed = 1500 # schiet sneller
+            bot_speed = 5 # gaat sneller
             previous_gamemode = "medium"
             game_state = "running"
             
         elif hard_button.clicked(event) and hard_unlocked:
-            bot_shooting_speed = 1000
-            bot_speed = 7
+            bot2_alive = True
+            bot_shooting_speed = 1000 
+            bot_speed = 7 
             game_state = "running"
         
-        if not medium_unlocked:
+        if not medium_unlocked: # lock image blitten
             screen.blit(lock_image, (screen_length//2 +100,355))
             
         if not hard_unlocked:
             screen.blit(lock_image, ((screen_length//2 +100,455)))
-            
-    
+
+    # game window        
     elif game_state == "running":
         screen.blit(game_background,(0,0))
-        # alle functies laten runnen
-        #player
+        
+        # movingobjects laten runnen
+        #   1) player runnen
         previous_pos = player.pos.copy()
         player.player_movement()  
         rotated_image, player_rect = player.update(screen_length, screen_height)
@@ -262,14 +274,33 @@ while running:
         player.shoot_special()
         player.reload_ammo()
         player_grid_pos = player.player_grid_pos() # dient voor niks denk ik
+        player.manage(bullet_list_player) # player_bullets updaten
+        player.bullet_collisions(bullet_list_player, "player", bot)
+        player.bullet_collisions(bullet_list_player, "player", bot2)
         
-        #bot
-        previous_bot_pos = bot.pos.copy()
-        rotated_bot_image,bot_rect = bot.bot_update(screen_length,screen_height)
-        bot.shoot()
-        bot.bot_movement()
+        #   2) bot 1 runnen
+        if bot1_alive:
+            previous_bot_pos = bot.pos.copy()
+            rotated_bot_image,bot_rect = bot.bot_update(screen_length,screen_height)
+            bot.shoot(bullet_list_bot)
+            bot.bot_movement()
+            bot.manage(bullet_list_bot) # bullets updaten
+            bot.bullet_collisions(bullet_list = bullet_list_bot, yourobject = "bot", other_object = player)
+            Screen.bot_hearts(previous_bot_pos,bot.health,botheart_image)
+            bot_rect = MovingObject.blit_rotated_image(screen, bot.image, bot.pos, bot.angle, bot_size)
         
-        #powerups: shield and special bullet
+        #   3) bot 2 runnen
+        if bot2_alive:
+            previous_bot2_pos = bot2.pos.copy()
+            rotated_bot2_image,bot2_rect = bot2.bot_update(screen_length,screen_height)
+            bot2.shoot(bullet_list_bot2)
+            bot2.bot_movement()
+            bot2.manage(bullet_list_bot2) # bullets updaten
+            bot2.bullet_collisions(bullet_list = bullet_list_bot2, yourobject = "bot", other_object = player)
+            Screen.bot_hearts(previous_bot2_pos,bot2.health,botheart_image)
+            bot2_rect = MovingObject.blit_rotated_image(screen, bot.image, bot2.pos, bot2.angle, bot_size)
+
+        #powerups: shield and special bullet, updaten en blitten
         shield_spawner.update()
         special_bullet_spawner.update()
         shield_spawner.draw()
@@ -277,20 +308,18 @@ while running:
         speedboost_spawner.update()
         speedboost_spawner.draw()
                
-        #managen bullets and collsion bullets of player and bot
-        player.manage(bullet_list= bullet_list_player, yourobject = "player", other_object = bot)
-        bot.manage(bullet_list = bullet_list_bot, yourobject = "bot", other_object = player)
-        
         #collision player and wall, bot and wall
         for object in list_of_objects:
             if player.collision(object):
                 player.pos = previous_pos
                 player_rect.center = player.pos
-            
             if bot.collision(object): #geen elif want anders gaat die alleen player doen bij twee botsingen die tegelijk zijn
                 bot.pos = previous_bot_pos
                 bot_rect.center = bot.pos
-            
+            if bot2.collision(object): #geen elif want anders gaat die alleen player doen bij twee botsingen die tegelijk zijn
+                bot2.pos = previous_bot2_pos
+                bot2_rect.center = bot2.pos
+        
         #walls en bushes tekenen 
         for object in list_of_objects:
             if hasattr(object, "draw"):
@@ -298,46 +327,54 @@ while running:
             
         # levens en ammo tekenen
         Screen.player_hearts(heart_pos,player.health,playerheart_image)
-        Screen.bot_hearts(previous_bot_pos,bot.health,botheart_image)
         Screen.print_ammo(ammo_pos,bullet_image,player.ammo)
         Screen.draw_special_bullet_ammo(player)
         Screen.draw_reload_timer(player)
-        Screen.draw_shield_indicator(player, bot)
+        Screen.draw_shield_indicator(player, bot,bot2)
         Screen.draw_speed_boost(player)
         player_rect = MovingObject.blit_rotated_image(screen, player.image, player.pos, player.angle, player_size)
-        bot_rect = MovingObject.blit_rotated_image(screen, bot.image, bot.pos, bot.angle, bot_size)
-
         #rect tekenen om collision te begrijpen
         #pygame.draw.rect(screen, (255, 0, 0), player_rect, 2)
         #pygame.draw.rect(screen, (0, 0, 255), bot_rect, 2)        
 
+        if bot.health <= 0 and bot1_alive: # and alive toevoegen om maar 1 keer te printen
+            print("bot1 died")
+            kill_sound.play()
+            bot1_alive = False
+        if bot2.health <=0 and bot2_alive: 
+            print("bot2 died")
+            kill_sound.play()
+            bot2_alive = False
         if player.health <= 0:
             game_state = "lost"
-        elif bot.health <= 0:
+        elif bot.health <= 0 and (bot2.health <=0 or bot2_alive == False):
             game_state = "won"
 
     # Win or Loss       
-    elif game_state in ["won", "lost", "start"]:
+    elif game_state in ["won", "lost","start"]:
         #reset alles
+        bot1_alive = True
+        bot2_alive = True
+        bot.pos = bot1_start_pos.copy() # copy want anders wordt hun startpositie geupdate naar de plaats waar ze gestorven zijn
+        bot2.pos = bot2_start_pos.copy()
         bullet_list_player.clear()
         bullet_list_bot.clear()
+        bullet_list_bot2.clear()
         shield_spawner.reset()
         special_bullet_spawner.reset()
         active_powerups.clear()
         player.reset()
         bot.reset()
-        
+        bot2.reset()
         
         if game_state == "won":
             screen.blit(winning_background,(0,0))
             Screen.draw_end_screen("YOU WON!")
             won_button.draw(screen)
-            
             if previous_gamemode == "easy":
                 medium_unlocked = True
             if previous_gamemode == "medium":
                 hard_unlocked = True
-        
         else:
             screen.blit(lost_background,(0,0))
             Screen.draw_end_screen("LOSER!")
@@ -345,13 +382,12 @@ while running:
         
         if keys[pygame.K_RETURN] or keys[pygame.K_KP_ENTER] or won_button.clicked(event) or lost_button.clicked(event):  
             game_state = "gamemode"
-            
             #nieuwe walls and bushes generaten
             list_of_objects.clear()
             available_positions = Screen.available_positions()
-            walls = GenerateObject(wall_amount ,  Wall,wall_image,player,bot)
+            walls = GenerateObject(wall_amount ,  Wall,wall_image,player,bot1_start_pos,bot2_start_pos)
             walls.generate()
-            bushes = GenerateObject( bush_amount , Bush,bush_image,player,bot)
+            bushes = GenerateObject( bush_amount , Bush,bush_image,player,bot1_start_pos,bot2_start_pos)
             bushes.generate()
             
         if keys[pygame.K_i] or instructions_button.clicked(event):
