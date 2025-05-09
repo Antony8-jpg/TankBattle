@@ -8,37 +8,38 @@ from StationaryObjects import *
 class MovingObject(Object):
     def __init__(self,pos):
         super().__init__(pos)
-        
-    def manage(self, bullet_list , yourobject, other_object):
-        for bullet in bullet_list[:]: #kopie van de lijst gebruiken om veilig bullets te verwijderen
-            if not bullet.launch(): #als launch False geeft
+     
+    def manage(self, bullet_list):
+        for bullet in bullet_list[:]:
+            if not bullet.launch():
                 bullet_list.remove(bullet)
             else:
-                rotated_bullet = pygame.transform.rotate(bullet.image, bullet.angle)  #kogel wordt geroteerd
+                rotated_bullet = pygame.transform.rotate(bullet.image, bullet.angle)
                 screen.blit(rotated_bullet, bullet.rect.topleft)
-                
-                for object in list_of_objects:
-                    if bullet.collision(object):
-                        if isinstance(object, Wall) and isinstance(bullet, SpecialBullet):
-                            list_of_objects.remove(object)  # SpecialBullet detroyed walls
-                        elif isinstance(object, Bush):
-                            list_of_objects.remove(object)
-                        bullet_list.remove(bullet)
-                        break  # voorkomt dubbele verwijdering van een bullet bij 2 collisions
-                
-                if bullet not in bullet_list:  #Als de bullet al verwijderd is, niet verder checken
-                    continue 
-                        
-                if bullet.collision(other_object):
+
+    def bullet_collisions(self, bullet_list, yourobject, other_object):
+        for bullet in bullet_list[:]:
+            for object in list_of_objects:
+                if bullet.collision(object):
+                    if isinstance(object, Wall) and isinstance(bullet, SpecialBullet):
+                        list_of_objects.remove(object)
+                    elif isinstance(object, Bush):
+                        list_of_objects.remove(object)
                     bullet_list.remove(bullet)
-                    if hasattr(other_object, 'has_shield') and other_object.has_shield:
-                        other_object.has_shield = False  # Shield verliest bescherming
-                        
-                    else:
-                        damage = 2 if isinstance(bullet, SpecialBullet) else 1
-                        other_object.health -= damage
-                        hit_sound.play()
                     break
+
+            if bullet not in bullet_list:
+                continue
+
+            if bullet.collision(other_object):
+                bullet_list.remove(bullet)
+                if hasattr(other_object, 'has_shield') and other_object.has_shield:
+                    other_object.has_shield = False
+                else:
+                    damage = 2 if isinstance(bullet, SpecialBullet) else 1
+                    other_object.health -= damage
+                    hit_sound.play()
+
 
     def blit_rotated_image(surf, image, center_pos, angle, true_rect_size):
         # roteer de image
