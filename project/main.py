@@ -31,7 +31,7 @@ class Bot(MovingObject):
         self.health = 5
         self.has_shield = False
         # movement state
-        self.state = "follow"
+        self.state = "random"
         self.direction = pygame.math.Vector2(0, 1)
         self.path = []
         self.goal = None
@@ -61,6 +61,8 @@ class Bot(MovingObject):
                 #shield_targeted = True
 
         # state update
+        if self.state == "shield" and shield_spawner.powerup == None:
+            self.state = "follow"
         if self.state != "shield" and current_time - self.state_starttime > self.state_duration:
             self.state_starttime = current_time
             self.state_duration = random.randint(2000, 4000)
@@ -81,7 +83,7 @@ class Bot(MovingObject):
             self.random_goal_vector = pygame.math.Vector2(self.random_goal_x, self.random_goal_y)
             self.goal = Grid.screen_to_grid(self.random_goal_vector)
 
-        # pad updaten
+        # pad maken
         if current_time - self.last_path_update_time > 500: # elke 0.5 seconden om niet te laggen
             self.grid = Grid.build_grid() #grid nodig voor astar
             new_path = Grid.astar(self.start, self.goal, self.grid) #astar toepassen
@@ -103,13 +105,13 @@ class Bot(MovingObject):
                         print("alternative path")
 
         #pad volgen
-        if self.path:
+        if self.path  and self.pos.distance_to(player.pos) > 100:
+            self.speed  = bot_speed
             next_step = Grid.grid_to_screen(self.path[0])
             if self.pos.distance_to(next_step) < 5:
                 self.path.pop(0)  #haal het eerste element eruit
                 if len(self.path) == 0:
                     self.direction = pygame.math.Vector2(0, 0)
-
                     #als hij bij het einde geraakt van random/shield gaat hij over naar follow
                     if self.state in ["random", "shield"]:
                         self.state = "follow"
@@ -129,8 +131,10 @@ class Bot(MovingObject):
                 x = grid[0] * grid_size
                 y = grid[1] * grid_size
                 pygame.draw.rect(screen, (255, 255, 255), (x, y, grid_size, grid_size), 2)
+            
         else:
-            self.direction = pygame.math.Vector2(0, 0)
+            self.speed = 0
+            self.direction = (player.pos-self.pos).normalize()
 
         # beweeg de bot position
         self.pos += self.speed * self.direction
@@ -164,7 +168,7 @@ class Bot(MovingObject):
     
     def shoot(self):
         current_time = pygame.time.get_ticks()
-        if current_time - self.last_shot_time > bot_shooting_speed and self.direction.length_squared() != 0: # zodat hij niet schiet als die stil staat-> kan voor bug zorgen
+        if current_time - self.last_shot_time > bot_shooting_speed: # zodat hij niet schiet als die stil staat-> kan voor bug zorgen
             self.last_shot_time = current_time
             self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
             bullet = Bullet(self.pos.copy(), self.direction.copy(), bullet_speed, self.angle, bullet_image)
@@ -295,13 +299,6 @@ while running:
         player.reset()
         bot.reset()
         
-        #walls and bushes generaten
-        list_of_objects.clear()
-        available_positions = Screen.available_positions()
-        walls = GenerateObject(amount= wall_amount , object= Wall, image = wall_image)
-        walls.generate()
-        bushes = GenerateObject(amount= bush_amount , object= Bush, image= bush_image)
-        bushes.generate()
         
         if game_state == "won":
             screen.blit(winning_background,(0,0))
@@ -313,10 +310,17 @@ while running:
             Screen.draw_end_screen("YOU LOST!")
             lost_button.draw(screen)
         
-        if keys[pygame.K_r] or keys[pygame.K_KP_ENTER] or won_button.clicked(event) or lost_button.clicked(event):  
+        if keys[pygame.K_RETURN] or keys[pygame.K_KP_ENTER] or won_button.clicked(event) or lost_button.clicked(event):  
             game_state = "running"
+            #nieuwe walls and bushes generaten
+            list_of_objects.clear()
+            available_positions = Screen.available_positions()
+            walls = GenerateObject(wall_amount ,  Wall,wall_image,player,bot)
+            walls.generate()
+            bushes = GenerateObject( bush_amount , Bush,bush_image,player,bot)
+            bushes.generate()
             
-        if keys[pygame.K_i]:
+        if keys[pygame.K_i] or instructions_button.clicked(event):
             game_state = "instructions"
 
 
