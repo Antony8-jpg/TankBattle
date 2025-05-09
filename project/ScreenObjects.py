@@ -76,13 +76,13 @@ class Screen():
         screen.blit(text, (screen_length // 2 - text.get_width() // 2, screen_height // 4))
         #subtext = small_font.render("Press R to Restart, ESC to Quit or i for instructions", True, (255, 255, 255))
         #screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height // 1.5))
-        
+        instructions_button.draw(screen)
         
         
     def draw_start_screen():
         screen.blit(main_background, (0,0))
         title = font.render("Tank Battle", True, (255, 255, 255))
-        subtitle = small_font.render("Press ENTER to Start or i for instructions", True, (255, 255, 255))
+        subtitle = small_font.render("Press ENTER to Start or i for instructions or use the buttons", True, (255, 255, 255))
         screen.blit(title, (screen_length // 2 - title.get_width() // 2, screen_height // 3))
         screen.blit(subtitle, (screen_length // 2 - subtitle.get_width() // 2, screen_height // 2))
         start_button.draw(screen)
@@ -101,6 +101,7 @@ class Screen():
         title = font.render("Instructions", True, (255, 255, 255))
         screen.blit(title, (screen_length // 2 - title.get_width() // 2, 50))
         back_to_homescreen_button.draw(screen)
+        start_button.draw(screen)
 
         for i, line in enumerate(instructions): #positie van de tekst en de lijn bijhouden
             line_render = small_font.render(line, True, (255, 255, 255))
@@ -108,6 +109,15 @@ class Screen():
         # niet meer nodig want er is een knop
         # subtext = small_font.render("Press BACKSPACE to return to title screen or ENTER to start", True, (255, 255, 255))
         # screen.blit(subtext, (screen_length // 2 - subtext.get_width() // 2, screen_height - 100))
+        
+    def draw_gamemode_screen():
+        screen.fill((0,0,0))
+        title = font.render("Choose a game mode", True, (255,255,255))
+        screen.blit(title, (screen_length // 2 - title.get_width() // 2, 50))
+        easy_button.draw(screen)
+        medium_button.draw(screen)
+        hard_button.draw(screen)
+        
 
 class Button():
     def __init__(self, rect, text, font, text_colour, background_colour, hover_colour,is_circle=False, radius=None):
@@ -155,36 +165,57 @@ start_button = Button(rect=(screen_length//2 -100,520, 200, 60),
                       text="Start",
                       font=small_font,
                       text_colour=(255,255,255),
-                      background_colour=(20,20,20),
+                      background_colour=(100,100,100),
                       hover_colour=(200,200,200)
                       )
 won_button = Button(rect=(screen_length //2 - 200 , 520, 400, 80),
                     text= "Play again!",
                     font=small_font,
                     text_colour=(255,255,255),
-                    background_colour=(0,0,0),
+                    background_colour=(100,100,100),
                     hover_colour=(200,200,200)
                     )
 lost_button = Button(rect=(screen_length //2 - 200 , 520, 400, 80),
                     text= "Get revenge!",
                     font=small_font,
                     text_colour=(255,255,255),
-                    background_colour=(0,255,0),
+                    background_colour=(100,100,100),
                     hover_colour=(200,200,200)
                     )
 
 instructions_button = Button(rect=(20,20, 40, 40),
-                    text="?",
+                    text="i",
                     font=small_font,
                     text_colour=(255,255,255),
-                    background_colour=(0,0,0),
+                    background_colour=(100,100,100),
                     hover_colour=(200,200,200),
                     is_circle = True
                     )
-back_to_homescreen_button = Button(rect=(screen_length//2 -100,450, 200, 60),
-                      text="Back",
+back_to_homescreen_button = Button(rect=(screen_length//2 -200,450, 400, 60),
+                      text="Back to main menu",
                       font=small_font,
                       text_colour=(255,255,255),
-                      background_colour=(20,20,20),
+                      background_colour=(100,100,100),
+                      hover_colour=(200,200,200)
+                      )
+easy_button = Button(rect=(screen_length//2 -100,250, 200, 60),
+                      text="Easy",
+                      font=small_font,
+                      text_colour=(255,255,255),
+                      background_colour=(100,100,100),
+                      hover_colour=(200,200,200)
+                      )
+medium_button = Button(rect=(screen_length//2 -100,350, 200, 60),
+                      text="Medium",
+                      font=small_font,
+                      text_colour=(255,255,255),
+                      background_colour=(100,100,100),
+                      hover_colour=(200,200,200)
+                      )
+hard_button = Button(rect=(screen_length//2 -100,450, 200, 60),
+                      text="Hard",
+                      font=small_font,
+                      text_colour=(255,255,255),
+                      background_colour=(100,100,100),
                       hover_colour=(200,200,200)
                       )
