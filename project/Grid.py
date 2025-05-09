@@ -1,6 +1,5 @@
 import pygame
 import math
-import random
 from queue import PriorityQueue
 
 #import files
@@ -20,7 +19,7 @@ class Grid:
         for i in range(grid_length): # verandert elke cel in een 0 
             row = [0] * grid_height 
             grid.append(row)
-
+    
         for obj in list_of_objects: # vervangt de 0 door een 1 als er een obstacle is
             if isinstance(obj, (Wall, Bush)):
                 grid[obj.grid_x][obj.grid_y] = 1
@@ -95,13 +94,21 @@ class Grid:
                 if not is_walkable:
                     continue
                 
-                #voorkomen dat je diagonaal door obstakels gaat
-                if abs(direction_x) == 1 and abs(direction_y) == 1: #diagonale beweging, vb: (2,2) -> (3,3)
-                    if grid[neighbour_x][current_cell[1]] == 1 or grid[current_cell[0]][neighbour_y] == 1: #1 = obstakel
-                        continue  
+                #voorkomen dat je diagonaal door obstakels gaat, dit deel komt van chatgpt
+                if abs(direction_x) == 1 and abs(direction_y) == 1:
+                    adj1_x, adj1_y = neighbour_x, current_cell[1]  
+                    adj2_x, adj2_y = current_cell[0], neighbour_y  
+
+                    if (0 <= adj1_x < grid_length and 0 <= adj1_y < grid_height and
+                        0 <= adj2_x < grid_length and 0 <= adj2_y < grid_height):
+
+                        if grid[adj1_x][adj1_y] == 1 or grid[adj2_x][adj2_y] == 1:
+                            continue  
 
                 #de kost van de stap bepalen: 1 voor recht, sqrt(2) voor diagonaal en de kost updaten
                 step_cost = math.sqrt(2) if abs(direction_x) + abs(direction_y) == 2 else 1
+                # step_cost = 1 if abs(direction_x) + abs(direction_y) == 2 else math.sqrt(2)
+
                 new_cost = cost_from_start[current_cell] + step_cost
 
                 #als deze route goedkoper is dan een eerder gevonden pad naar deze cel
