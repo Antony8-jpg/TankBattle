@@ -32,7 +32,7 @@ hit_sound = mixer.Sound("hit_sound.ogg")
 hit_sound.set_volume(1.0)
                     
 # grid
-grid_size = 37
+grid_size = 40
 grid_length = screen_length // grid_size
 grid_height = screen_height // grid_size
 
@@ -73,7 +73,7 @@ special_bullet_image = GameImage("bullet_special.png", bullet_size).image
 list_of_objects = [] #walls en bushes worden in deze lijst geplaatst
 wall_size = [35,35]
 wall_image = GameImage("brick_wall.png", wall_size).image
-wall_amount = 15
+wall_amount = 10
 
 #bush
 bush_size = [35,35]
@@ -101,6 +101,8 @@ shield = None #er kan tegelijk maar 1 shield in de game zijn, in het begin geen 
 speed_boost_image = GameImage("speed_boost.png", powerup_size).image
 speed_boost_duration = 10000 #10 s
 
+#lock image
+lock_image = GameImage("lock.png", [50,50]).image
 
 class Object:
     def __init__(self,pos):
