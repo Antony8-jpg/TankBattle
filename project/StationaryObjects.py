@@ -24,12 +24,13 @@ class Bush(StationaryObject):
 #klasse met een methode om walls en bushes aan te maken op random posities met bepaalde voorwaarden
 available_positions = Screen.available_positions()
 class GenerateObject: 
-    def __init__(self, amount, object, image, player, bot):
+    def __init__(self, amount, object, image, player, bot1,bot2):
         self.amount = amount
         self.object = object
         self.image = image
         self.player = player
-        self.bot = bot
+        self.bot1 = bot1
+        self.bot2 = bot2
                     
     def generate(self):
         for i in range(self.amount):
@@ -39,7 +40,7 @@ class GenerateObject:
                 object_pos = pygame.math.Vector2(x, y)
 
                 #niet te dicht bij speler of bot
-                if object_pos.distance_to(self.player.pos) <= 2 * player_size[0] or object_pos.distance_to(self.bot.pos) <= 4 * bot_size[0]:
+                if object_pos.distance_to(self.player.pos) <= 2 * player_size[0] or object_pos.distance_to(self.bot1) <= 4 * bot_size[0] or object_pos.distance_to(self.bot2) <= 4 * bot_size[0]:
                     continue #lus begint opnieuw
 
                 #niet te dicht bij andere objecten
