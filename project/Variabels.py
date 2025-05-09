@@ -28,9 +28,12 @@ pygame.display.set_icon(icon)
 mixer.music.load("background.wav")
 mixer.music.play(-1)
 mixer.music.set_volume(0.5)
-hit_sound = mixer.Sound("hit_sound.ogg")
+hit_sound = mixer.Sound("hit1.mp3")
 hit_sound.set_volume(1.0)
-                    
+kill_sound = mixer.Sound("bongo-hit.mp3")   
+kill_sound.set_volume(3.0)
+
+
 # grid
 grid_size = 40
 grid_length = screen_length // grid_size
@@ -46,21 +49,25 @@ rotation_speed = 15
 angle = 0
 player_health = 5
 
-# bot 
+# bot (bot1 = bot, bot2 = bot2)
 bot_size = [40,40]
 bot_image = GameImage("enemytank_image.png", bot_size).image
-bot_pos = pygame.math.Vector2(screen_length -100 , screen_height/2)
+bot_pos = pygame.math.Vector2(screen_length -100 , 100)
+bot2_pos = pygame.math.Vector2(screen_length -100, screen_height-100)
 bot_speed = 3
 bot_angle = 0
 bot_rotation_speed = rotation_speed
 bot_shooting_speed = 2000
 bot_health = 5
+bot1_start_pos = pygame.math.Vector2(screen_length -100 , 100)
+bot2_start_pos = pygame.math.Vector2(screen_length -100, screen_height-100)
 
 #bullet
 bullet_size = [10,25]
 bullet_speed = 20
 bullet_list_player = []
 bullet_list_bot = []
+bullet_list_bot2 = []
 bullet_image = GameImage("bullet_image1.png", bullet_size).image
 bullet_cooldown = 2000
 ammo_pos = [10,70]
@@ -103,6 +110,7 @@ speed_boost_duration = 10000 #10 s
 
 #lock image
 lock_image = GameImage("lock.png", [50,50]).image
+
 
 class Object:
     def __init__(self,pos):
