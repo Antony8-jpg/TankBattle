@@ -28,7 +28,7 @@ class Bot(MovingObject):
         self.speed = speed
         self.angle = angle
         self.last_shot_time = 0
-        self.health = 5
+        self.health = bot_health
         self.has_shield = False
         # movement state
         self.state = "random"
@@ -175,7 +175,7 @@ class Bot(MovingObject):
             bullet_list_bot.append(bullet)
 
     def reset(self):
-        self.health = 5
+        self.health = bot_health
         self.direction = pygame.math.Vector2(0, -1)
         self.pos = pygame.math.Vector2(screen_length - 100, screen_height / 2)
         self.has_shield = False
@@ -195,7 +195,10 @@ shield_spawner = PowerUpSpawner(Shield, shield_image, player, bot, list_of_objec
 special_bullet_spawner = PowerUpSpawner(SpecialBulletPickup, special_bullet_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.has_special_bullet)
 speedboost_spawner = PowerUpSpawner(SpeedBoost, speed_boost_image, player, bot, list_of_objects, available_positions, condition_func = lambda x: not x.speed_boost_active)
 
-game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost"
+game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost", "gamemode"
+medium_unlocked = False
+hard_unlocked = False
+previous_gamemode = "easy"
 
 #gameloop
 running = True
@@ -211,7 +214,7 @@ while running:
     if game_state == "start":
         Screen.draw_start_screen()
         if keys[pygame.K_KP_ENTER] or keys[pygame.K_RETURN] or start_button.clicked(event):  
-            game_state = "running"
+            game_state = "gamemode"
         if keys[pygame.K_i] or instructions_button.clicked(event):
             game_state = "instructions"
             
@@ -219,9 +222,34 @@ while running:
         Screen.draw_instruction_screen()
         if keys[pygame.K_BACKSPACE] or back_to_homescreen_button.clicked(event):
             game_state = "start"
-        if keys[pygame.K_KP_ENTER]:  
-            game_state = "running"
+        if keys[pygame.K_KP_ENTER] or start_button.clicked(event):  
+            game_state = "gamemode"
     
+    elif game_state == "gamemode":
+        Screen.draw_gamemode_screen()
+        if easy_button.clicked(event):
+            bot_shooting_speed = 2000
+            bot_speed = 3
+            previous_gamemode = "easy"
+            game_state = "running"
+            
+        elif medium_button.clicked(event) and medium_unlocked:
+            bot_shooting_speed = 1500
+            bot_speed = 5
+            previous_gamemode = "medium"
+            game_state = "running"
+            
+        elif hard_button.clicked(event) and hard_unlocked:
+            bot_shooting_speed = 1000
+            bot_speed = 7
+            game_state = "running"
+        
+        if not medium_unlocked:
+            screen.blit(lock_image, (screen_length//2 +100,355))
+            
+        if not hard_unlocked:
+            screen.blit(lock_image, ((screen_length//2 +100,455)))
+            
     
     elif game_state == "running":
         screen.blit(game_background,(0,0))
@@ -241,7 +269,7 @@ while running:
         bot.shoot()
         bot.bot_movement()
         
-       #powerups: shield and special bullet
+        #powerups: shield and special bullet
         shield_spawner.update()
         special_bullet_spawner.update()
         shield_spawner.draw()
@@ -289,7 +317,7 @@ while running:
             game_state = "won"
 
     # Win or Loss       
-    elif game_state in ["won", "lost","start"]:
+    elif game_state in ["won", "lost", "start"]:
         #reset alles
         bullet_list_player.clear()
         bullet_list_bot.clear()
@@ -304,14 +332,20 @@ while running:
             screen.blit(winning_background,(0,0))
             Screen.draw_end_screen("YOU WON!")
             won_button.draw(screen)
+            
+            if previous_gamemode == "easy":
+                medium_unlocked = True
+            if previous_gamemode == "medium":
+                hard_unlocked = True
         
         else:
             screen.blit(lost_background,(0,0))
-            Screen.draw_end_screen("YOU LOST!")
+            Screen.draw_end_screen("LOSER!")
             lost_button.draw(screen)
         
         if keys[pygame.K_RETURN] or keys[pygame.K_KP_ENTER] or won_button.clicked(event) or lost_button.clicked(event):  
-            game_state = "running"
+            game_state = "gamemode"
+            
             #nieuwe walls and bushes generaten
             list_of_objects.clear()
             available_positions = Screen.available_positions()
