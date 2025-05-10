@@ -1,7 +1,7 @@
 import pygame
 import math
 
-#import files
+# import files
 from Variabels import *
 from ScreenObjects import *
 from MovingObjects import *
@@ -14,10 +14,10 @@ class Player(MovingObject):
         self.angle = angle
         self.image = playerImg
         self.rect = pygame.Rect(self.pos.x, self.pos.y, player_size[0], player_size[1])
-        self.last_shot_time = 0 #timer voor bullets    
+        self.last_shot_time = 0 # timer voor bullets    
         self.ammo = 3
         self.last_reload_time = pygame.time.get_ticks()
-        self.health = 5
+        self.health = player_health
         self.has_special_bullet = True
         self.has_shield = False
         self.speed_boost_active = False
@@ -25,11 +25,11 @@ class Player(MovingObject):
         self.base_speed = player_speed
 
     def player_movement(self):
-        #speed updaten en powerup checken
+        # speed updaten en powerup checken
         if self.speed_boost_active and pygame.time.get_ticks() - self.speed_boost_start_time > speed_boost_duration:
             self.speed_boost_active = False
         
-        actual_speed = self.base_speed * (1.5 if self.speed_boost_active else 1)
+        actual_speed = self.base_speed * (1.5 if self.speed_boost_active else 1) # speed wordt vermenigvuldigd met 1.5 als de speed boost actief is
         
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP]:
@@ -82,14 +82,9 @@ class Player(MovingObject):
             special_bullet = SpecialBullet(self.pos.copy(), self.direction.copy(), bullet_speed, self.angle, special_bullet_image)
             bullet_list_player.append(special_bullet)
             self.has_special_bullet = False
-            
-    def player_grid_pos(self):  # dient voor niks denk ik 
-        grid_x = int(self.pos.x)//grid_size
-        grid_y = int(self.pos.y)//grid_size
-        return grid_x,grid_y
     
     def reset(self):
-        self.health = 5
+        self.health = player_health
         self.ammo = max_ammo
         self.has_special_bullet = True
         self.direction = pygame.math.Vector2(0, 1)
