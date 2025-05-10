@@ -1,6 +1,6 @@
 import pygame
 
-#import files
+# import files
 from Variabels import *
 from ScreenObjects import *
 from StationaryObjects import *
@@ -49,7 +49,7 @@ class MovingObject(Object):
         # teken de geroteerde afbeelding
         surf.blit(rotated_image, rotated_rect.topleft)
 
-        # true_rect voor de rectangle die niet roteert, deze wordt gebruikt voor collisions ...
+        # true_rect voor de rectangle die niet roteert, deze wordt gebruikt voor collisions omdat de rotated_rect veel te groot is voor collisions
         true_rect = pygame.Rect(
             center_pos[0] - true_rect_size[0] // 2,
             center_pos[1] - true_rect_size[1] // 2,
@@ -68,7 +68,7 @@ class Bullet(MovingObject):
         self.image = bulletIMG
         self.rect = self.image.get_rect(center = self.pos)
             
-    
+
     def launch(self):
         self.pos += self.speed * self.direction 
         self.rect.center = self.pos
@@ -77,8 +77,8 @@ class Bullet(MovingObject):
         
         
         if self.pos.x < 0 or self.pos.x > screen_length or self.pos.y < 0 or self.pos.y > screen_height:
-           return False  # Geeft False om bullet te verwijderen uit de bullet lijst
-        return True  # Bullet blijft in de lijst
+           return False  # geeft False om bullet te verwijderen uit de bullet lijst als de bullet uit het scherm is
+        return True  # bullet blijft in de lijst
         
 class SpecialBullet(Bullet):
     def __init__(self, pos, direction, speed, angle, bulletIMG):
