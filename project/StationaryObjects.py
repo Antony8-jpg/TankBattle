@@ -2,7 +2,7 @@ import pygame
 import math
 import random
 
-#import files
+# import files
 from Variabels import *
 from ScreenObjects import *
 
@@ -21,7 +21,7 @@ class Bush(StationaryObject):
         self.image = bushIMG
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
 
-#klasse met een methode om walls en bushes aan te maken op random posities met bepaalde voorwaarden
+# klasse met een methode om walls en bushes aan te maken op random posities onder bepaalde voorwaarden
 available_positions = Screen.available_positions()
 class GenerateObject: 
     def __init__(self, amount, object, image, player, bot1,bot2):
@@ -39,11 +39,11 @@ class GenerateObject:
                 x, y = random.choice(available_positions)
                 object_pos = pygame.math.Vector2(x, y)
 
-                #niet te dicht bij speler of bot
+                # niet te dicht bij speler of bot
                 if object_pos.distance_to(self.player.pos) <= 2 * player_size[0] or object_pos.distance_to(self.bot1) <= 4 * bot_size[0] or object_pos.distance_to(self.bot2) <= 4 * bot_size[0]:
-                    continue #lus begint opnieuw
+                    continue # lus begint opnieuw
 
-                #niet te dicht bij andere objecten
+                # niet te dicht bij andere objecten
                 too_close = False
                 for obj in list_of_objects:
                     if object_pos.distance_to(pygame.math.Vector2(obj.rect.topleft)) < 3 * wall_size[0]:
@@ -54,9 +54,9 @@ class GenerateObject:
                     attempts += 1
                     if attempts > 100:
                         break 
-                    continue #lus begint opnieuw
+                    continue
 
-                #alles checks zijn oké: object wordt geplaatst
+                # alle checks zijn oké: object wordt geplaatst
                 wall = self.object((x, y), self.image)
                 list_of_objects.append(wall)
                 available_positions.remove((x, y))
