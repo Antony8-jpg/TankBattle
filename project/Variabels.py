@@ -3,6 +3,8 @@ from pygame import mixer
 
 pygame.init()
 pygame.mixer.init()
+
+# klasse om afbeeldingen in te laden met de juiste grootte
 class GameImage:
     def __init__(self, name, size):
         self.name = name
@@ -15,7 +17,7 @@ class GameImage:
 
 # background
 screen_size = [1100, 650]
-screen_length = screen_size[0] #makkelijker om screen height en lenght verder te gebruiken
+screen_length = screen_size[0] # makkelijker om screen height en lenght verder te gebruiken
 screen_height = screen_size[1]
 screen = pygame.display.set_mode((screen_length,screen_height))
 game_background = GameImage("plains.jpg", screen_size).image
@@ -33,13 +35,12 @@ hit_sound.set_volume(1.0)
 kill_sound = mixer.Sound("bongo-hit.mp3")   
 kill_sound.set_volume(3.0)
 
-
 # grid
 grid_size = 40
 grid_length = screen_length // grid_size
 grid_height = screen_height // grid_size
 
-#player
+# player
 player_size = [40,40]
 player_image = GameImage("new_tank_image.png", player_size).image
 player_pos = pygame.math.Vector2(100, screen_height / 2)
@@ -62,7 +63,7 @@ bot_health = 5
 bot1_start_pos = pygame.math.Vector2(screen_length -100 , 100)
 bot2_start_pos = pygame.math.Vector2(screen_length -100, screen_height-100)
 
-#bullet
+# bullet
 bullet_size = [10,25]
 bullet_speed = 20
 bullet_list_player = []
@@ -73,28 +74,28 @@ bullet_cooldown = 2000
 ammo_pos = [10,70]
 max_ammo = 3
 
-#special bullet
+# special bullet
 special_bullet_image = GameImage("bullet_special.png", bullet_size).image
 
-#wall
+# wall
 list_of_objects = [] #walls en bushes worden in deze lijst geplaatst
 wall_size = [35,35]
 wall_image = GameImage("brick_wall.png", wall_size).image
 wall_amount = 10
 
-#bush
+# bush
 bush_size = [35,35]
 bush_image = GameImage("bush.png", bush_size).image
 bush_amount = 10
 
-#heart
+# heart
 playerheart_size = [50,50]
 botheart_size = [15,15]
 playerheart_image = GameImage("heart.png", playerheart_size).image
 botheart_image = GameImage("heart.png", botheart_size).image
 heart_pos = [10,10]
 
-#powerups 
+# powerups 
 active_powerups = [] #lijst die gebruikt wordt zodat powerups niet op dezelfde plaats kunnen spawnen
 playershield_size = [50,50]
 botshield_size = [15,15]
@@ -108,7 +109,7 @@ shield = None #er kan tegelijk maar 1 shield in de game zijn, in het begin geen 
 speed_boost_image = GameImage("speed_boost.png", powerup_size).image
 speed_boost_duration = 10000 #10 s
 
-#lock image
+# lock 
 lock_image = GameImage("lock.png", [50,50]).image
 
 
@@ -119,8 +120,8 @@ class Object:
     def collision(self, otherObject):
     # Controleer of beide objecten een rect attribuut hebben
         if hasattr(self, 'rect') and hasattr(otherObject, 'rect'):
-            return self.rect.colliderect(otherObject.rect) #geeft True bij botsing, False bij geen botsing
-        return False  # Als een van de objecten geen rect heeft, return False
+            return self.rect.colliderect(otherObject.rect) # geeft True bij botsing, False bij geen botsing
+        return False  # als een van de objecten geen rect heeft, return False
 
 class StationaryObject(Object):
     def __init__(self,pos):
