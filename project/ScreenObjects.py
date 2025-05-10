@@ -76,6 +76,10 @@ class Screen():
         screen.blit(text, (screen_length // 2 - text.get_width() // 2, screen_height // 4))
         instructions_button.draw(screen)
         
+    def draw_unlocked(message):
+        text = small_font.render(message, True, (255,255,255))
+        screen.blit(text, (screen_length // 2 - text.get_width() //2, screen_height // 2))
+        
         
     def draw_start_screen():
         screen.blit(main_background, (0,0))
