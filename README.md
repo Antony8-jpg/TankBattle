@@ -6,4 +6,5 @@ How to Play:
 
 - Move your tank using the arrow keys.
 - Press spacebar to shoot.
+- Press F to shoot a special bullet.
 - Avoid enemy bullets and eliminate enemy tanks to win.
