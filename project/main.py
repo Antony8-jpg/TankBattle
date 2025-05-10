@@ -133,10 +133,10 @@ class Bot(MovingObject):
             self.angle = -math.degrees(math.atan2(self.direction.y, self.direction.x)) - 90
 
             # teken het pad voor visualisatie/debugging
-            for grid in self.path:
+            """for grid in self.path:
                 x = grid[0] * grid_size
                 y = grid[1] * grid_size
-                pygame.draw.rect(screen, (255, 255, 255), (x, y, grid_size, grid_size), 2)
+                pygame.draw.rect(screen, (255, 255, 255), (x, y, grid_size, grid_size), 2)"""
             
         else:
             self.speed = 0
@@ -198,15 +198,20 @@ walls.generate()
 bushes = GenerateObject(bush_amount, Bush, bush_image, player, bot1_start_pos,bot2_start_pos)
 bushes.generate()
 
-# #powerups aanmaken
+#powerups aanmaken
 shield_spawner = PowerUpSpawner(Shield, shield_image, player, bot, bot2, list_of_objects, available_positions, condition_func = lambda x: not x.has_shield and not bot.has_shield)
 special_bullet_spawner = PowerUpSpawner(SpecialBulletPickup, special_bullet_image, player, bot, bot2, list_of_objects, available_positions, condition_func = lambda x: not x.has_special_bullet)
 speedboost_spawner = PowerUpSpawner(SpeedBoost, speed_boost_image, player, bot, bot2, list_of_objects, available_positions, condition_func = lambda x: not x.speed_boost_active)
 
 game_state = "start"  #verschillende states: "start", "instructions", "running", "won", "lost"
+#game modes
 previous_gamemode = "easy"
 medium_unlocked = False
 hard_unlocked = False
+medium_unlocked_counter = 0
+hard_unlocked_counter = 0
+medium_just_unlocked = False #twee variabelen die ervoor zorgen dat de counter maar 1 keer omhoog gaat, ander gaat elke frame de counter omhoog
+hard_just_unlocked = False
 
 #gameloop
 running = True
@@ -237,13 +242,14 @@ while running:
     elif game_state == "gamemode":
         Screen.draw_gamemode_screen()
         if easy_button.clicked(event):
+            bot2_alive = False
             bot_shooting_speed = 2000
             bot_speed = 3
             previous_gamemode = "easy"
             game_state = "running"
             
         elif medium_button.clicked(event) and medium_unlocked:
-            bot2_alive = True
+            bot2_alive = True # tweede bot wordt geactiveerd
             bot_shooting_speed = 1500 # schiet sneller
             bot_speed = 5 # gaat sneller
             previous_gamemode = "medium"
@@ -251,8 +257,8 @@ while running:
             
         elif hard_button.clicked(event) and hard_unlocked:
             bot2_alive = True
-            bot_shooting_speed = 1000 
-            bot_speed = 7 
+            bot_shooting_speed = 1000 # shiet sneller
+            bot_speed = 7 # gaat sneller
             game_state = "running"
         
         if not medium_unlocked: # lock image blitten
@@ -354,7 +360,6 @@ while running:
     elif game_state in ["won", "lost","start"]:
         #reset alles
         bot1_alive = True
-        bot2_alive = True
         bot.pos = bot1_start_pos.copy() # copy want anders wordt hun startpositie geupdate naar de plaats waar ze gestorven zijn
         bot2.pos = bot2_start_pos.copy()
         bullet_list_player.clear()
@@ -362,6 +367,7 @@ while running:
         bullet_list_bot2.clear()
         shield_spawner.reset()
         special_bullet_spawner.reset()
+        speedboost_spawner.reset()
         active_powerups.clear()
         player.reset()
         bot.reset()
@@ -371,10 +377,22 @@ while running:
             screen.blit(winning_background,(0,0))
             Screen.draw_end_screen("YOU WON!")
             won_button.draw(screen)
-            if previous_gamemode == "easy":
+        
+            if previous_gamemode == "easy" and not medium_just_unlocked:
                 medium_unlocked = True
-            if previous_gamemode == "medium":
+                medium_unlocked_counter += 1
+                medium_just_unlocked = True  # zet de vlag om opnieuw tellen te voorkomen
+        
+            if previous_gamemode == "medium" and not hard_just_unlocked:
                 hard_unlocked = True
+                hard_unlocked_counter += 1
+                hard_just_unlocked = True
+        
+            if medium_unlocked_counter == 1 and previous_gamemode == "easy":
+                Screen.draw_unlocked("You unlocked game mode medium!")
+            if hard_unlocked_counter == 1  and previous_gamemode == "medium":
+                Screen.draw_unlocked("You unlocked game mode hard!")
+                
         else:
             screen.blit(lost_background,(0,0))
             Screen.draw_end_screen("LOSER!")
@@ -382,6 +400,8 @@ while running:
         
         if keys[pygame.K_RETURN] or keys[pygame.K_KP_ENTER] or won_button.clicked(event) or lost_button.clicked(event):  
             game_state = "gamemode"
+            medium_just_unlocked = False
+            hard_just_unlocked = False
             #nieuwe walls and bushes generaten
             list_of_objects.clear()
             available_positions = Screen.available_positions()
