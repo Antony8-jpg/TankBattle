@@ -52,7 +52,7 @@ class Grid:
         # alle andere grids zijn dan vrij -> True
         return True
 
-    def astar(start_cell, goal_cell, grid): # code van chatgpt, pathfinding langs vrije pad
+    def astar(start_cell, goal_cell, grid): 
         #priority queue aanmaken en start_cell toevoegen met priority 0
         open_cells = PriorityQueue()
         open_cells.put((0, start_cell))
@@ -95,11 +95,11 @@ class Grid:
                     continue
                 
                 #voorkomen dat je diagonaal door obstakels gaat, dit deel komt van chatgpt
-                if abs(direction_x) == 1 and abs(direction_y) == 1:
-                    adj1_x, adj1_y = neighbour_x, current_cell[1]  
-                    adj2_x, adj2_y = current_cell[0], neighbour_y  
+                if abs(direction_x) == 1 and abs(direction_y) == 1: #bijvoorbeeld van positie (3,3) naar (4,4)
+                    adj1_x, adj1_y = neighbour_x, current_cell[1]  #horizontaal vakje ernaast
+                    adj2_x, adj2_y = current_cell[0], neighbour_y  #verticaal vakje ernaast
 
-                    if (0 <= adj1_x < grid_length and 0 <= adj1_y < grid_height and
+                    if (0 <= adj1_x < grid_length and 0 <= adj1_y < grid_height and #controleerd of vakjes ernaast in de grid liggen
                         0 <= adj2_x < grid_length and 0 <= adj2_y < grid_height):
 
                         if grid[adj1_x][adj1_y] == 1 or grid[adj2_x][adj2_y] == 1:
