@@ -1,6 +1,6 @@
 import pygame
 
-#import files
+# import files
 from Variabels import *
 
 class Screen():
@@ -45,9 +45,9 @@ class Screen():
             screen.blit(heart_image,(x_waarde + i*spacing,y_waarde))
             
     def draw_shield_indicator(player, bot1,bot2):
-        #shield player wordt naast health getoond
+        # shield player wordt naast health getoond
         list = [bot1,bot2]
-        #shield van de bot wordt naast de hartjes van de bot getoond
+        # shield van de bot wordt naast de hartjes van de bot getoond
         for object in list:
             if object.has_shield:
                 spacing = bot_size[0] / max(object.health, 1)
@@ -55,7 +55,7 @@ class Screen():
                 bot_heart_y = object.pos.y - bot_size[1]
                 screen.blit(botshield_image, (bot_heart_x + 5, bot_heart_y))
         if player.has_shield:
-            x = heart_pos[0] + player.health * playerheart_size[0] + 5  #rechts van de laatste hartje
+            x = heart_pos[0] + player.health * playerheart_size[0] + 5  # rechts van het laatste hartje
             y = heart_pos[1] 
             screen.blit(playershield_image, (x, y))
 
@@ -65,7 +65,7 @@ class Screen():
             current_time = pygame.time.get_ticks()
             time_since_start_boost = current_time - player.speed_boost_start_time
             duration = speed_boost_duration
-            progress = max(0, min(1.0, 1 - time_since_start_boost / duration))  #balk gaat van 1 tot 0, max en min is zodat het altijd tussen 0 en 1 zit
+            progress = max(0, min(1.0, 1 - time_since_start_boost / duration))  # balk gaat van 1 tot 0, max en min is zodat het altijd tussen 0 en 1 zit
             bar_width = 50
             bar_height = 10
             pygame.draw.rect(screen, (50, 50, 50), (5, 210, bar_width, bar_height)) #lege bar
@@ -98,16 +98,16 @@ class Screen():
             "Shoot bullets with SPACEBAR",
             "Shoot special bullet with F key",
             "Hearts represent your health",
-            "Defeat the enemy bot!"
+            "Defeat the red enemy bot(s)!"
         ]
         title = font.render("Instructions", True, (255, 255, 255))
         screen.blit(title, (screen_length // 2 - title.get_width() // 2, 50))
         back_to_homescreen_button.draw(screen)
         start_button.draw(screen)
 
-        for i, line in enumerate(instructions): #positie van de tekst en de lijn bijhouden
+        for i, line in enumerate(instructions): # positie van de tekst en de lijn bijhouden
             line_render = small_font.render(line, True, (255, 255, 255))
-            screen.blit(line_render, (screen_length // 2 - line_render.get_width() // 2, 150 + i * 60)) #positie van de tekst bepalen
+            screen.blit(line_render, (screen_length // 2 - line_render.get_width() // 2, 150 + i * 60)) # positie van de tekst bepalen
         
     def draw_gamemode_screen():
         screen.fill((0,0,0))
@@ -136,7 +136,7 @@ class Button():
         
         # kleur aanpassen
         if self.rect.collidepoint(mouse_pos):
-            current_colour = self.hover_colour #lichtere kleur als de muis op die positie is 
+            current_colour = self.hover_colour # lichtere kleur als de muis op die positie is 
         else:
             current_colour = self.background_colour
         # draw
@@ -150,12 +150,12 @@ class Button():
         surface.blit(text_surf, text_rect)
 
     def clicked(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left click
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # left click
             if self.rect.collidepoint(pygame.mouse.get_pos()):
                 return True
         return False
 
-#letttertype 
+# letttertype 
 font = pygame.font.SysFont(None, 100)
 small_font = pygame.font.SysFont(None, 50)
 
