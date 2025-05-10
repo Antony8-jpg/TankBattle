@@ -327,11 +327,9 @@ while running:
         player_rect = MovingObject.blit_rotated_image(screen, player.image, player.pos, player.angle, player_size)
 
         if bot.health <= 0 and bot1_alive: # and alive toevoegen om maar 1 keer te printen
-            print("bot1 died")
             kill_sound.play()
             bot1_alive = False
         if bot2.health <=0 and bot2_alive: 
-            print("bot2 died")
             kill_sound.play()
             bot2_alive = False
         if player.health <= 0:
