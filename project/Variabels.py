@@ -60,8 +60,8 @@ bot_angle = 0
 bot_rotation_speed = rotation_speed
 bot_shooting_speed = 2000
 bot_health = 5
-bot1_start_pos = pygame.math.Vector2(screen_length -100 , 100)
-bot2_start_pos = pygame.math.Vector2(screen_length -100, screen_height-100)
+bot1_start_pos = bot_pos.copy()
+bot2_start_pos = bot2_pos.copy()
 
 # bullet
 bullet_size = [10,25]
@@ -111,6 +111,11 @@ speed_boost_duration = 10000 #10 s
 
 # lock 
 lock_image = GameImage("lock.png", [50,50]).image
+
+# buttons
+text_colour=(255,255,255)
+background_colour=(100,100,100)
+hover_colour=(200,200,200)
 
 
 class Object:
