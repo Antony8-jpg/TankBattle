@@ -3,9 +3,10 @@ self.rect.collidepoint(..)
 pygame.font.SysFont(..)
 .distance_to(..)
 pygame.transform.rotate(..)
-isinstance(..)
 hasattr(..)
 
+Prompts van w3schools:
+isinstance(..)
 
 Prompts van chatgpt:
 
