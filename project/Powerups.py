@@ -85,6 +85,7 @@ class PowerUpSpawner:
                         active_powerups.remove(self.powerup)
                         self.powerup = None
                     self.powerup = None
+                    break
 
     def draw(self):
         if self.powerup:
