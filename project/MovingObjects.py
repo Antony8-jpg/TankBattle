@@ -1,5 +1,3 @@
-import pygame
-
 # import files
 from Variabels import *
 from ScreenObjects import *
@@ -81,8 +79,8 @@ class Bullet(MovingObject):
         return True  # bullet blijft in de lijst
         
 class SpecialBullet(Bullet):
-    def __init__(self, pos, direction, speed, angle, bulletIMG):
-        super().__init__(pos, direction, speed, angle, bulletIMG)
+    def __init__(self, pos, direction, speed, angle, bullet_image):
+        super().__init__(pos, direction, speed, angle, bullet_image)
         
     def launch(self):
         return super().launch()
