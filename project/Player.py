@@ -18,7 +18,7 @@ class Player(MovingObject):
         self.ammo = 3
         self.last_reload_time = pygame.time.get_ticks()
         self.health = player_health
-        self.has_special_bullet = True
+        self.has_special_bullet = False
         self.has_shield = False
         self.speed_boost_active = False
         self.speed_boost_start_time = 0
@@ -86,7 +86,7 @@ class Player(MovingObject):
     def reset(self):
         self.health = player_health
         self.ammo = max_ammo
-        self.has_special_bullet = True
+        self.has_special_bullet = False
         self.direction = pygame.math.Vector2(0, 1)
         self.pos = pygame.math.Vector2(100, screen_height / 2)
         self.angle = 0
