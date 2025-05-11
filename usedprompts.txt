@@ -1,3 +1,12 @@
+Prompts van https://www.pygame.org/docs/:
+self.rect.collidepoint(..)
+pygame.font.SysFont(..)
+.distance_to(..)
+pygame.transform.rotate(..)
+isinstance(..)
+hasattr(..)
+
+
 Prompts van chatgpt:
 
 Question: Why does the bot always go for the shield even though there is a 50% chance?
@@ -84,6 +93,186 @@ class Button:
         text_surf = self.font.render(self.text, True, self.text_colour)
         text_rect = text_surf.get_rect(center=self.rect.center)
         surface.blit(text_surf, text_rect)
+Question:
+could you make so when the bots function are called in the gameloop, it doesn't repeat itself
+Answer:
+To avoid repeating bot behavior logic in the game loop (especially the copy-paste block for bot and bot2), you should refactor your code using a list of active bots and loop through that instead.
+
+✅ Step-by-step fix:
+Create a list of bots:
+Replace this:
+
+python
+Copy
+Edit
+bot = Bot(...)
+bot2 = Bot(...)
+With:
+
+python
+Copy
+Edit
+bots = [Bot(bot_pos, bot_image, bot_speed, bot_angle),
+        Bot(bot2_pos, bot_image, bot_speed, bot_angle)]
+Control bot activation via bot2_alive:
+Instead of checking if bot1_alive and if bot2_alive, loop like this:
+
+python
+Copy
+Edit
+for i, bot in enumerate(bots):
+    if i == 1 and not bot2_alive:
+        continue
+    previous_bot_pos = bot.pos.copy()
+    rotated_image, bot_rect = bot.bot_update(screen_length, screen_height)
+    bot.shoot(bullet_list_bot if i == 0 else bullet_list_bot2)
+    bot.bot_movement()
+    bot.manage(bullet_list_bot if i == 0 else bullet_list_bot2)
+    bot.bullet_collisions(bullet_list=bullet_list_bot if i == 0 else bullet_list_bot2, yourobject="bot", other_object=player)
+    Screen.bot_hearts(previous_bot_pos, bot.health, botheart_image)
+    MovingObject.blit_rotated_image(screen, bot.image, bot.pos, bot.angle, bot_size)
+Refactor collision handling:
+Replace:
+
+python
+Copy
+Edit
+if bot.collision(object): ...
+if bot2.collision(object): ...
+With:
+
+python
+Copy
+Edit
+for i, bot in enumerate(bots):
+    if i == 1 and not bot2_alive:
+        continue
+    if bot.collision(object):
+        bot.pos = previous_bot_pos if i == 0 else previous_bot2_pos
+        bot.rect.center = bot.pos
+Health and win condition checks:
+Replace:
+
+python
+Copy
+Edit
+if bot.health <= 0 and bot1_alive: ...
+if bot2.health <= 0 and bot2_alive: ...
+With:
+
+python
+Copy
+Edit
+if bots[0].health <= 0 and bot1_alive:
+    kill_sound.play()
+    bot1_alive = False
+if bots[1].health <= 0 and bot2_alive:
+    kill_sound.play()
+    bot2_alive = False
+And update the win check:
+
+python
+Copy
+Edit
+if player.health <= 0:
+    game_state = "lost"
+elif bots[0].health <= 0 and (bots[1].health <= 0 or not bot2_alive):
+    game_state = "won"
+This cleanup:
+
+Reduces repetition.
+
+Makes it easier to scale to more bots.
+
+Keeps your game loop more maintainable.
+
+Want me to rewrite the full relevant loop sections for you with these changes applied?
+Question:
+if you do this previous_bot2_pos is not defined
+Answer:
+You're absolutely right — if we loop over bots, then previous_bot2_pos won't be defined unless we explicitly assign it per bot. So, we need to track each bot's previous position inside the loop.
+
+Here’s the clean and correct way to handle it:
+
+✅ Fix: Track Previous Positions Dynamically
+Before the loop:
+
+python
+Copy
+Edit
+previous_bot_positions = [bot.pos.copy() for i, bot in enumerate(bots) if i == 0 or bot2_alive]
+Or, even better — inside the loop, store it at the start:
+
+python
+Copy
+Edit
+for i, bot in enumerate(bots):
+    if i == 1 and not bot2_alive:
+        continue
+
+    previous_bot_pos = bot.pos.copy()
+
+    rotated_image, bot_rect = bot.bot_update(screen_length, screen_height)
+    bot.shoot(bullet_list_bot if i == 0 else bullet_list_bot2)
+    bot.bot_movement()
+    bot.manage(bullet_list_bot if i == 0 else bullet_list_bot2)
+    bot.bullet_collisions(
+        bullet_list=bullet_list_bot if i == 0 else bullet_list_bot2,
+        yourobject="bot",
+        other_object=player,
+    )
+    Screen.bot_hearts(previous_bot_pos, bot.health, botheart_image)
+    MovingObject.blit_rotated_image(screen, bot.image, bot.pos, bot.angle, bot_size)
+
+    # Wall collision fix inside same loop
+    for obj in list_of_objects:
+        if bot.collision(obj):
+            bot.pos = previous_bot_pos
+            bot.rect.center = bot.pos
+🔄 Summary of Changes:
+Track previous_bot_pos inside the loop.
+
+Avoid using hardcoded previous_bot2_pos, bot, or bot2.
+
+Keeps the bot logic unified and scalable.
+
+Would you like the full updated running game state loop with these changes cleanly applied?
+
+Question:
+can i do this?
+bot1.start_pos = bot1_start_pos
+bot2.start_pos = bot2_start_pos
+
+Answer:
+Yes, you can absolutely do that, and it's a good idea if you want each bot to "remember" its starting position (e.g., for resets or respawning).
+
+✅ What it does:
+This attaches a new attribute start_pos to each bot instance:
+
+python
+Copy
+Edit
+bot1.start_pos = bot1_start_pos
+bot2.start_pos = bot2_start_pos
+Now you can later do:
+
+python
+Copy
+Edit
+bot1.pos = bot1.start_pos.copy()
+to reset their position — without relying on external variables like bot1_start_pos floating around in the global scope.
+
+🧠 Why it’s useful:
+Makes the Bot instances more self-contained.
+
+Cleaner resets:
+
+python
+Copy
+Edit
+for bot in bots:
+    bot.pos = bot.start_pos.copy()
+    bot.reset()
 
 Question:
 leg kort uit hoe colliderect van de bibliotheek pygame werkt in python
@@ -288,3 +477,5 @@ if abs(direction_x) == 1 and abs(direction_y) == 1: # bijvoorbeeld van positie (
         if grid[adj1_x][adj1_y] == 1 or grid[adj2_x][adj2_y] == 1:
             continue
 Wil je dat ik dit stukje integreer in een volledige A* functie of andere context?
+
+
