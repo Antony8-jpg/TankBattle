@@ -1,4 +1,3 @@
-import pygame
 import random
 
 # import files
@@ -9,9 +8,6 @@ class PowerUp(StationaryObject):
         super().__init__(pos)
         self.image = image
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
-
-    def apply_effect(self, target):
-        pass
 
     def draw(self):
         super().draw()
@@ -80,21 +76,15 @@ class PowerUpSpawner:
                 active_powerups.remove(self.powerup)
             self.powerup = None
             
-        # collision met bot1 (enkel voor shield)
-        if self.powerup and isinstance(self.powerup, Shield) and self.bot.rect.colliderect(self.powerup.rect):
-            self.powerup.apply_effect(self.bot)
-            if self.powerup in active_powerups:
-                active_powerups.remove(self.powerup)
-                self.powerup = None
-            self.powerup = None
-        
-        # collision met bot2 (enkel voor shield)
-        if self.powerup and isinstance(self.powerup, Shield) and self.bot2.rect.colliderect(self.powerup.rect):
-            self.powerup.apply_effect(self.bot2)
-            if self.powerup in active_powerups:
-                active_powerups.remove(self.powerup)
-                self.powerup = None
-            self.powerup = None
+        # collision met bots (enkel voor shield)
+        if self.powerup and isinstance(self.powerup, Shield): 
+            for bot in [self.bot,self.bot2]:
+                if bot.rect.colliderect(self.powerup.rect):
+                    self.powerup.apply_effect(bot)
+                    if self.powerup in active_powerups:
+                        active_powerups.remove(self.powerup)
+                        self.powerup = None
+                    self.powerup = None
 
     def draw(self):
         if self.powerup:
