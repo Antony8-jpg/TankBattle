@@ -240,41 +240,127 @@ Keeps the bot logic unified and scalable.
 
 Would you like the full updated running game state loop with these changes cleanly applied?
 
-Question:
-can i do this?
-bot1.start_pos = bot1_start_pos
-bot2.start_pos = bot2_start_pos
+Question: hoe kan ik een heuristiek definiëren voor astar pathfinding?
 
 Answer:
-Yes, you can absolutely do that, and it's a good idea if you want each bot to "remember" its starting position (e.g., for resets or respawning).
 
-✅ What it does:
-This attaches a new attribute start_pos to each bot instance:
+Een heuristiek in A* pathfinding is een schatting van de kosten van het huidige punt naar het doel. Hoe beter de schatting, hoe efficiënter je pad. De heuristiek moet altijd admissible zijn: ze mag de werkelijke kosten nooit overschatten, anders kan A* onjuiste paden kiezen.
 
-python
-Copy
-Edit
-bot1.start_pos = bot1_start_pos
-bot2.start_pos = bot2_start_pos
-Now you can later do:
+Veelgebruikte heuristieken:
+Manhattan afstand (voor grids met alleen horizontaal/verticaal bewegen):
 
 python
 Copy
 Edit
-bot1.pos = bot1.start_pos.copy()
-to reset their position — without relying on external variables like bot1_start_pos floating around in the global scope.
-
-🧠 Why it’s useful:
-Makes the Bot instances more self-contained.
-
-Cleaner resets:
+def manhattan_heuristic(start, goal):
+    return abs(start[0] - goal[0]) + abs(start[1] - goal[1])
+Euclidische afstand (voor 2D-beweging in alle richtingen):
 
 python
 Copy
 Edit
-for bot in bots:
-    bot.pos = bot.start_pos.copy()
-    bot.reset()
+import math
+
+def euclidean_heuristic(start, goal):
+    return math.hypot(start[0] - goal[0], start[1] - goal[1])
+Diagonale afstand (voor grids waar je in 8 richtingen kan bewegen met gelijke kosten):
+
+python
+Copy
+Edit
+def diagonal_heuristic(start, goal):
+    dx = abs(start[0] - goal[0])
+    dy = abs(start[1] - goal[1])
+    return max(dx, dy)
+Gebalanceerde diagonale (Octile afstand) – als diagonaal bewegen iets duurder is (zoals sqrt(2)):
+
+python
+Copy
+Edit
+def octile_heuristic(start, goal):
+    dx = abs(start[0] - goal[0])
+    dy = abs(start[1] - goal[1])
+    return dx + dy + (math.sqrt(2) - 2) * min(dx, dy)
+Hoe gebruik je dit in A*?
+Bij het evalueren van een knoop:
+
+python
+Copy
+Edit
+f(n) = g(n) + h(n)
+g(n) = de werkelijke kost van start tot nu
+
+h(n) = heuristische kost van nu tot doel (de functie hierboven)
+
+Dus je gebruikt de heuristiek als een functie in je A*-algoritme, bijvoorbeeld:
+
+python
+Copy
+Edit
+f_score[neighbor] = g_score[current] + distance(current, neighbor) + heuristic(neighbor, goal)
+Welke vorm van beweging gebruik je in jouw spel? Alleen 4 richtingen of ook diagonaal?
+
+Question:
+Ik krijg deze foutmelding, hoe los ik dit op? 
+if bot.rect.colliderect(self.powerup.rect):
+                            ^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'rect'
+
+Answer:
+De foutmelding:
+
+pgsql
+Copy
+Edit
+AttributeError: 'NoneType' object has no attribute 'rect'
+betekent dat self.powerup op dat moment None is, maar je probeert alsnog self.powerup.rect aan te spreken in deze regel:
+
+python
+Copy
+Edit
+if bot.rect.colliderect(self.powerup.rect):
+De oorzaak zit in deze blok code in update():
+
+python
+Copy
+Edit
+if self.powerup and isinstance(self.powerup, Shield): 
+    for bot in [self.bot,self.bot2]:
+        if bot.rect.colliderect(self.powerup.rect):
+            self.powerup.apply_effect(bot)
+            if self.powerup in active_powerups:
+                active_powerups.remove(self.powerup)
+                self.powerup = None
+            self.powerup = None
+Probleem:
+Je zet self.powerup = None twee keer binnen de loop. De eerste keer na active_powerups.remove(...), en dan nog eens buiten de if, maar nog steeds in de loop. Daardoor kan het gebeuren dat:
+
+De eerste bot pakt de power-up, self.powerup wordt op None gezet.
+
+De loop gaat verder naar de tweede bot.
+
+Dan probeert hij self.powerup.rect te checken, maar self.powerup is nu al None → crash.
+
+Oplossing:
+Verplaats self.powerup = None uit de loop, zodat het pas gebeurt na de loop als een bot de powerup gepakt heeft.
+
+python
+Copy
+Edit
+if self.powerup and isinstance(self.powerup, Shield): 
+    for bot in [self.bot, self.bot2]:
+        if bot.rect.colliderect(self.powerup.rect):
+            self.powerup.apply_effect(bot)
+            if self.powerup in active_powerups:
+                active_powerups.remove(self.powerup)
+            self.powerup = None
+            break  # stop de loop zodra één bot de power-up pakt
+Wat deze fix doet:
+break zorgt ervoor dat je de loop verlaat nadat één bot de powerup pakt.
+
+self.powerup = None wordt niet meer na elke iteratie uitgevoerd, alleen als het daadwerkelijk nodig is.
+
+Wil je dat ik dit stuk code direct verbeter en teruggeef als geheel?
 
 Question:
 leg kort uit hoe colliderect van de bibliotheek pygame werkt in python
