@@ -1,4 +1,4 @@
-import pygame
+# import pygame
 
 # import files
 from Variabels import *
@@ -9,14 +9,15 @@ class Screen():
     
     def draw_reload_timer(player):
         current_time = pygame.time.get_ticks()
-        if player.ammo < max_ammo:
+        if player.ammo < max_ammo: # enkel als hij nog ammo moet bijkrijgen
             time_since_reload = current_time - player.last_reload_time
-            progress = min(time_since_reload / bullet_cooldown, 1.0)
+            progress = min(time_since_reload / bullet_cooldown, 1.0) # min(..,1.0) zorgt ervoor dat de progress niet groter dan 1 is
             bar_width = 50
-            pygame.draw.rect(screen, (255, 0, 0), (ammo_pos[0], ammo_pos[1] + 40, bar_width, 10)) # lege bar tekenen
-            pygame.draw.rect(screen, (0, 255, 0), (ammo_pos[0], ammo_pos[1] + 40, progress * bar_width, 10)) # progress in bar tekenen
+            pygame.draw.rect(screen, (255, 0, 0), (ammo_pos[0], ammo_pos[1] + 40, bar_width, 10)) # lege bar tekenen in rood
+            pygame.draw.rect(screen, (0, 255, 0), (ammo_pos[0], ammo_pos[1] + 40, progress * bar_width, 10)) # progress in bar tekenen in geel
             
     def available_positions():
+        # geeft posities waar walles en bushes generate kunnen worden, overal maar niet aan de zijkanten, wall_size[] zijn de stappen
         available_positions = [
              (x, y)
              for x in range(75, screen_length - 50, wall_size[0])
@@ -46,8 +47,8 @@ class Screen():
             
     def draw_shield_indicator(player, bot1,bot2):
         # shield player wordt naast health getoond
-        list = [bot1,bot2]
         # shield van de bot wordt naast de hartjes van de bot getoond
+        list = [bot1,bot2]
         for object in list:
             if object.has_shield:
                 spacing = bot_size[0] / max(object.health, 1)
@@ -80,7 +81,6 @@ class Screen():
         text = small_font.render(message, True, (255,255,255))
         screen.blit(text, (screen_length // 2 - text.get_width() //2, screen_height // 2))
         
-        
     def draw_start_screen():
         screen.blit(main_background, (0,0))
         title = font.render("Tank Battle", True, (255, 255, 255))
@@ -90,7 +90,6 @@ class Screen():
         start_button.draw(screen)
         instructions_button.draw(screen)
 
-        
     def draw_instruction_screen():
         screen.fill((0, 0, 0))
         instructions = [
@@ -163,58 +162,57 @@ small_font = pygame.font.SysFont(None, 50)
 start_button = Button(rect=(screen_length//2 -100,520, 200, 60),
                       text="Start",
                       font=small_font,
-                      text_colour=(255,255,255),
-                      background_colour=(100,100,100),
-                      hover_colour=(200,200,200)
-                      )
-won_button = Button(rect=(screen_length //2 - 200 , 520, 400, 80),
-                    text= "Play again!",
-                    font=small_font,
-                    text_colour=(255,255,255),
-                    background_colour=(100,100,100),
-                    hover_colour=(200,200,200)
+                      text_colour = text_colour,
+                      background_colour = background_colour,
+                      hover_colour = hover_colour)
+won_button = Button((screen_length //2 - 200 , 520, 400, 80),
+                    "Play again!",
+                    small_font,
+                    text_colour,
+                    background_colour,
+                    hover_colour
                     )
-lost_button = Button(rect=(screen_length //2 - 200 , 520, 400, 80),
-                    text= "Get revenge!",
-                    font=small_font,
-                    text_colour=(255,255,255),
-                    background_colour=(100,100,100),
-                    hover_colour=(200,200,200)
+lost_button = Button((screen_length //2 - 200 , 520, 400, 80),
+                    "Get revenge!",
+                    small_font,
+                    text_colour,
+                    background_colour,
+                    hover_colour
                     )
 
-instructions_button = Button(rect=(20,20, 40, 40),
-                    text="i",
-                    font=small_font,
-                    text_colour=(255,255,255),
-                    background_colour=(100,100,100),
-                    hover_colour=(200,200,200),
+instructions_button = Button((20,20, 40, 40),
+                    "i",
+                    small_font,
+                    text_colour,
+                    background_colour,
+                    hover_colour,
                     is_circle = True
                     )
-back_to_homescreen_button = Button(rect=(screen_length//2 -200,450, 400, 60),
-                      text="Back to main menu",
-                      font=small_font,
-                      text_colour=(255,255,255),
-                      background_colour=(100,100,100),
-                      hover_colour=(200,200,200)
+back_to_homescreen_button = Button((screen_length//2 -200,450, 400, 60),
+                      "Back to main menu",
+                      small_font,
+                      text_colour,
+                      background_colour,
+                      hover_colour
                       )
-easy_button = Button(rect=(screen_length//2 -100,250, 200, 60),
-                      text="Easy",
-                      font=small_font,
-                      text_colour=(255,255,255),
-                      background_colour=(100,100,100),
-                      hover_colour=(200,200,200)
+easy_button = Button((screen_length//2 -100,250, 200, 60),
+                      "Easy",
+                      small_font,
+                      text_colour,
+                      background_colour,
+                      hover_colour
                       )
-medium_button = Button(rect=(screen_length//2 -100,350, 200, 60),
-                      text="Medium",
-                      font=small_font,
-                      text_colour=(255,255,255),
-                      background_colour=(100,100,100),
-                      hover_colour=(200,200,200)
+medium_button = Button((screen_length//2 -100,350, 200, 60),
+                      "Medium",
+                      small_font,
+                      text_colour,
+                      background_colour,
+                      hover_colour
                       )
-hard_button = Button(rect=(screen_length//2 -100,450, 200, 60),
-                      text="Hard",
-                      font=small_font,
-                      text_colour=(255,255,255),
-                      background_colour=(100,100,100),
-                      hover_colour=(200,200,200)
+hard_button = Button((screen_length//2 -100,450, 200, 60),
+                      "Hard",
+                      small_font,
+                      text_colour,
+                      background_colour,
+                      hover_colour
                       )
