@@ -187,8 +187,10 @@ Makes it easier to scale to more bots.
 Keeps your game loop more maintainable.
 
 Want me to rewrite the full relevant loop sections for you with these changes applied?
+
 Question:
 if you do this previous_bot2_pos is not defined
+
 Answer:
 You're absolutely right — if we loop over bots, then previous_bot2_pos won't be defined unless we explicitly assign it per bot. So, we need to track each bot's previous position inside the loop.
 
@@ -276,7 +278,7 @@ for bot in bots:
 
 Question:
 leg kort uit hoe colliderect van de bibliotheek pygame werkt in python
-ChatGPT zei:
+Answer:
 Natuurlijk! colliderect is een functie in Pygame die wordt gebruikt om te detecteren of twee rechthoeken (rectangles) elkaar raken. Het is een methode van een Rect object.
 🔧 Hoe werkt colliderect?
 In het kort:
@@ -312,11 +314,10 @@ Erg handig voor botsingsdetectie in games (zoals speler vs. vijand, kogel vs. mu
 
 Wil je ook een visueel voorbeeld of integratie in een kleine game?
 
-Je zei:
+Question:
 kan je een list comprehension gebruiken om een lijst met tuples aan te maken
 
-
-ChatGPT zei:
+Answer:
 Zeker weten! Je kunt een list comprehension prima gebruiken om een lijst van tuples te maken in Python. Het is zelfs een veelgebruikte manier om snel en leesbaar data te genereren.
 
 🔧 Voorbeeld 1: Simpele lijst van (x, y) coordinaten
@@ -351,11 +352,11 @@ Output:
 Wil je dat ik een list comprehension maak voor iets specifieks, bijvoorbeeld voor een game (zoals Pygame Rects of iets met botsingen)?
 
 
-Je zei:
+Question:
 hoe toon je tekst op het scherm in pygame
 
 
-ChatGPT zei:
+Answer:
 Goede vraag! In Pygame toon je tekst op het scherm met behulp van het pygame.font-systeem. Hieronder leg ik het stap voor stap uit met een voorbeeld.
 
 ✅ Stappen om tekst te tonen in Pygame:
@@ -418,11 +419,11 @@ Wil je ook weten hoe je dynamisch tekst verandert, bijvoorbeeld score of timer?
 
 
 
-Je zei:
+Question:
 Hoe kan je de elementen van een lijst random herverdelen?
 
 
-ChatGPT zei:
+Answer:
 Je kunt de elementen van een lijst random herverdelen (shufflen) in Python met behulp van de functie random.shuffle() uit de standaardbibliotheek.
 
 🔧 Voorbeeld:
@@ -456,10 +457,10 @@ print("Origineel:", origineel)
 print("Geshuffeld:", geshuffeld)
 Wil je dit toepassen op een specifieke lijst of in een game zoals kaarten schudden?
 
-Je zei:
+Question:
 Hoe kan je voorkomen dat de bot diagonaal door obstakels kan gaan?
 
-ChatGPT zei:
+Answer:
 Om te voorkomen dat een bot diagonaal door obstakels beweegt, moet je controleren of beide zijwaartse (rechtlijnige) vakjes naast de gewenste diagonale stap vrij zijn. Want zelfs als het diagonale doelvak vrij is, zou de bot anders “langs de rand” van een obstakel kunnen glippen, wat vaak niet realistisch of wenselijk is in grid-based games.
 
 Daarom voeg je een check toe die controleert of er geen obstakel zit in de horizontale of verticale richting van de beweging. Als er in één van die richtingen een obstakel zit, dan sla je die diagonale stap over.
