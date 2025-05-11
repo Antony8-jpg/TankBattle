@@ -1,5 +1,4 @@
-import pygame
-import math
+# import pygame
 import random
 
 # import files
@@ -7,18 +6,18 @@ from Variabels import *
 from ScreenObjects import *
 
 class Wall(StationaryObject):
-    def __init__(self,pos, wallIMG):
+    def __init__(self,pos, wall_image):
         super().__init__(pos)
-        self.image = wallIMG
+        self.image = wall_image
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
 
     def draw(self):
        return super().draw()
 
 class Bush(StationaryObject):
-    def __init__(self,pos, bushIMG):
+    def __init__(self,pos, bush_image):
         super().__init__(pos)
-        self.image = bushIMG
+        self.image = bush_image
         self.rect = self.image.get_rect(center=(int(self.pos[0]), int(self.pos[1])))
 
 # klasse met een methode om walls en bushes aan te maken op random posities onder bepaalde voorwaarden
